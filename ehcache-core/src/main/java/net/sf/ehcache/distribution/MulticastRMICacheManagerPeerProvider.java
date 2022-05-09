@@ -159,7 +159,7 @@ public final class MulticastRMICacheManagerPeerProvider extends RMICacheManagerP
                         remoteCachePeers.add(cachePeer);
                     } else {
 
-                            LOG.debug("rmiUrl is stale. Either the remote peer is shutdown or the " +
+                            LOG.debug("rmiUrl {} is stale. Either the remote peer is shutdown or the " +
                                     "network connectivity has been interrupted. Will be removed from list of remote cache peers",
                                     rmiUrl);
                         staleList.add(rmiUrl);
