@@ -4,7 +4,7 @@
   <parent>
     <groupId>net.sf.ehcache</groupId>
     <artifactId>ehcache-root</artifactId>
-    <version>2.10.6</version>
+    <version>2.10.6-adesso</version>
     <relativePath>..</relativePath>
   </parent>
 

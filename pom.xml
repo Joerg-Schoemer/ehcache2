@@ -13,7 +13,7 @@
   <groupId>net.sf.ehcache</groupId>
   <artifactId>ehcache-root</artifactId>
   <packaging>pom</packaging>
-  <version>2.10.6</version>
+  <version>2.10.6-adesso</version>
 
   <scm>
     <developerConnection>scm:git:https://github.com/ehcache/ehcache2.git</developerConnection>
@@ -461,7 +461,7 @@
       <distributionManagement>
         <repository>
           <id>sonatype-nexus-staging</id>
-          <url>http://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+          <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
         <snapshotRepository>
           <id>sonatype-nexus-snapshots</id>
@@ -488,22 +488,22 @@
   <repositories>
     <repository>
       <id>terracotta-snapshots</id>
-      <url>http://www.terracotta.org/download/reflector/snapshots</url>
+      <url>https://www.terracotta.org/download/reflector/snapshots</url>
     </repository>
     <repository>
       <id>terracotta-releases</id>
-      <url>http://www.terracotta.org/download/reflector/releases</url>
+      <url>https://www.terracotta.org/download/reflector/releases</url>
     </repository>
   </repositories>
 
   <pluginRepositories>
     <pluginRepository>
       <id>terracotta-snapshots</id>
-      <url>http://www.terracotta.org/download/reflector/snapshots</url>
+      <url>https://www.terracotta.org/download/reflector/snapshots</url>
     </pluginRepository>
     <pluginRepository>
       <id>terracotta-releases</id>
-      <url>http://www.terracotta.org/download/reflector/releases</url>
+      <url>https://www.terracotta.org/download/reflector/releases</url>
     </pluginRepository>
   </pluginRepositories>   
 </project>

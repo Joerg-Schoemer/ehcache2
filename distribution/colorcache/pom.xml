@@ -19,7 +19,7 @@
 
   <groupId>net.sf.ehcache.examples</groupId>
   <artifactId>colorcache</artifactId>
-  <version>2.10.6</version>
+  <version>2.10.6-adesso</version>
   <name>colorcache</name>
   <packaging>war</packaging>
   <description>Clustered Ehcache sample with Terracotta</description>
