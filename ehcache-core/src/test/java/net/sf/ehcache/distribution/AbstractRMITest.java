@@ -93,7 +93,7 @@ public abstract class AbstractRMITest {
       Logger.getLogger(RMIBootstrapCacheLoader.class.getName()),
       Logger.getLogger(RMIBootstrapCacheLoaderFactory.class.getName()),
       Logger.getLogger(RMICacheManagerPeerListener.class.getName()),
-      Logger.getLogger(RMICacheManagerPeerProvider.class.getName()),
+      Logger.getLogger(AbstractRMICacheManagerPeerProvider.class.getName()),
       Logger.getLogger(RMICacheManagerPeerProviderFactory.class.getName()),
       //Logger.getLogger(RMICachePeer.class.getName()),
       Logger.getLogger(RMICacheReplicatorFactory.class.getName()),

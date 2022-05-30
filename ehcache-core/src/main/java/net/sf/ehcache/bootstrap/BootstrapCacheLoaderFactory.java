@@ -16,9 +16,9 @@
 
 package net.sf.ehcache.bootstrap;
 
-import net.sf.ehcache.util.PropertyUtil;
-
 import java.util.Properties;
+
+import static net.sf.ehcache.util.PropertyUtil.extractBoolean;
 
 /**
  * An abstract factory for creating BootstrapCacheLoader instances. Implementers should provide their own
@@ -50,43 +50,8 @@ public abstract class BootstrapCacheLoaderFactory<T extends BootstrapCacheLoader
      * @param properties the properties passed by the CacheManager, read from the configuration file
      * @return true if to be bootstrapped asynchronously, false otherwise
      */
-    protected boolean extractBootstrapAsynchronously(Properties properties) {
+    protected static boolean extractBootstrapAsynchronously(Properties properties) {
         return extractBoolean(properties, BOOTSTRAP_ASYNCHRONOUSLY, true);
     }
 
-    /**
-     * Will retrieve the boolean value from the properties, defaulting if property isn't present
-     * @param properties the properties to use
-     * @param prop the property name to look for
-     * @param defaultValue the default value if property is missing
-     * @return the value, or it's default, for the property
-     */
-    protected boolean extractBoolean(final Properties properties, final String prop, final boolean defaultValue) {
-        boolean value;
-        String propString = PropertyUtil.extractAndLogProperty(prop, properties);
-        if (propString != null) {
-            value = PropertyUtil.parseBoolean(propString);
-        } else {
-            value = defaultValue;
-        }
-        return value;
-    }
-
-    /**
-     * Will retrieve the boolean value from the properties, defaulting if property isn't present
-     * @param properties the properties to use
-     * @param prop the property name to look for
-     * @param defaultValue the default value if property is missing
-     * @return the value, or it's default, for the property
-     */
-    protected long extractLong(final Properties properties, final String prop, final long defaultValue) {
-        long value;
-        String propString = PropertyUtil.extractAndLogProperty(prop, properties);
-        if (propString != null) {
-            value = Long.parseLong(propString);
-        } else {
-            value = defaultValue;
-        }
-        return value;
-    }
 }

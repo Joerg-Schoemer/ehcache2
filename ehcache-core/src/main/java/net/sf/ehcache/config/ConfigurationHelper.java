@@ -1,17 +1,17 @@
 /**
- *  Copyright Terracotta, Inc.
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.config;
@@ -46,6 +46,9 @@ import net.sf.ehcache.util.PropertyUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static net.sf.ehcache.util.ClassLoaderUtil.createNewInstance;
+import static net.sf.ehcache.util.PropertyUtil.parseProperties;
 
 /**
  * The configuration for ehcache.
@@ -99,10 +102,8 @@ public final class ConfigurationHelper {
         if (className == null || className.length() == 0) {
             LOG.debug("No CacheExceptionHandlerFactory class specified. Skipping...");
         } else {
-            CacheExceptionHandlerFactory factory = (CacheExceptionHandlerFactory)
-                    ClassLoaderUtil.createNewInstance(loader, className);
-            Properties properties = PropertyUtil.parseProperties(factoryConfiguration.getProperties(),
-                    factoryConfiguration.getPropertySeparator());
+            CacheExceptionHandlerFactory factory = (CacheExceptionHandlerFactory) createNewInstance(loader, className);
+            Properties properties = parseProperties(factoryConfiguration.getProperties(), factoryConfiguration.getPropertySeparator());
             return factory.createExceptionHandler(properties);
         }
         return cacheExceptionHandler;
@@ -115,29 +116,25 @@ public final class ConfigurationHelper {
      * @return a map of CacheManagerPeerProviders
      */
     public Map<String, CacheManagerPeerProvider> createCachePeerProviders() {
-        String className = null;
         Map<String, CacheManagerPeerProvider> cacheManagerPeerProviders = new HashMap<String, CacheManagerPeerProvider>();
         List<FactoryConfiguration> cachePeerProviderFactoryConfiguration =
                 configuration.getCacheManagerPeerProviderFactoryConfiguration();
         for (FactoryConfiguration factoryConfiguration : cachePeerProviderFactoryConfiguration) {
 
-            if (factoryConfiguration != null) {
-                className = factoryConfiguration.getFullyQualifiedClassPath();
+            if (factoryConfiguration == null) {
+                continue;
             }
+
+            String className = factoryConfiguration.getFullyQualifiedClassPath();
             if (className == null) {
                 LOG.debug("No CachePeerProviderFactoryConfiguration specified. Not configuring a CacheManagerPeerProvider.");
                 return null;
-            } else {
-                CacheManagerPeerProviderFactory cacheManagerPeerProviderFactory =
-                        (CacheManagerPeerProviderFactory)
-                                ClassLoaderUtil.createNewInstance(loader, className);
-                Properties properties = PropertyUtil.parseProperties(factoryConfiguration.getProperties(),
-                        factoryConfiguration.getPropertySeparator());
-                CacheManagerPeerProvider cacheManagerPeerProvider =
-                        cacheManagerPeerProviderFactory.createCachePeerProvider(cacheManager, properties);
-                cacheManagerPeerProviders.put(cacheManagerPeerProvider.getScheme(), cacheManagerPeerProvider);
-
             }
+
+            CacheManagerPeerProviderFactory factory = (CacheManagerPeerProviderFactory) createNewInstance(loader, className);
+            Properties properties = parseProperties(factoryConfiguration.getProperties(), factoryConfiguration.getPropertySeparator());
+            CacheManagerPeerProvider peerProvider = factory.createCachePeerProvider(cacheManager, properties);
+            cacheManagerPeerProviders.put(peerProvider.getScheme(), peerProvider);
         }
         return cacheManagerPeerProviders;
     }
@@ -146,28 +143,25 @@ public final class ConfigurationHelper {
      * Tries to load the class specified otherwise defaults to null
      */
     public Map<String, CacheManagerPeerListener> createCachePeerListeners() {
-        String className = null;
         Map<String, CacheManagerPeerListener> cacheManagerPeerListeners = new HashMap<String, CacheManagerPeerListener>();
-        List<FactoryConfiguration> cacheManagerPeerListenerFactoryConfigurations =
-                configuration.getCacheManagerPeerListenerFactoryConfigurations();
-        boolean first = true;
-        for (FactoryConfiguration factoryConfiguration : cacheManagerPeerListenerFactoryConfigurations) {
-
-            if (factoryConfiguration != null) {
-                className = factoryConfiguration.getFullyQualifiedClassPath();
+        for (FactoryConfiguration factoryConfiguration : configuration.getCacheManagerPeerListenerFactoryConfigurations()) {
+            if (factoryConfiguration == null) {
+                continue;
             }
+
+            String className = factoryConfiguration.getFullyQualifiedClassPath();
             if (className == null) {
                 LOG.debug("No CachePeerListenerFactoryConfiguration specified. Not configuring a CacheManagerPeerListener.");
                 return null;
-            } else {
-                CacheManagerPeerListenerFactory cacheManagerPeerListenerFactory = (CacheManagerPeerListenerFactory)
-                        ClassLoaderUtil.createNewInstance(loader, className);
-                Properties properties = PropertyUtil.parseProperties(factoryConfiguration.getProperties(),
-                        factoryConfiguration.getPropertySeparator());
-                CacheManagerPeerListener cacheManagerPeerListener =
-                        cacheManagerPeerListenerFactory.createCachePeerListener(cacheManager, properties);
-                cacheManagerPeerListeners.put(cacheManagerPeerListener.getScheme(), cacheManagerPeerListener);
             }
+
+            CacheManagerPeerListenerFactory cacheManagerPeerListenerFactory = (CacheManagerPeerListenerFactory)
+                    createNewInstance(loader, className);
+            Properties properties = parseProperties(factoryConfiguration.getProperties(),
+                    factoryConfiguration.getPropertySeparator());
+            CacheManagerPeerListener cacheManagerPeerListener =
+                    cacheManagerPeerListenerFactory.createCachePeerListener(cacheManager, properties);
+            cacheManagerPeerListeners.put(cacheManagerPeerListener.getScheme(), cacheManagerPeerListener);
         }
         return cacheManagerPeerListeners;
     }
@@ -175,8 +169,8 @@ public final class ConfigurationHelper {
     /**
      * Tries to load the class specified.
      *
-     * @return If there is none returns null.
      * @param cacheManager
+     * @return If there is none returns null.
      */
     public final CacheManagerEventListener createCacheManagerEventListener(CacheManager cacheManager) throws CacheException {
         String className = null;
@@ -190,8 +184,8 @@ public final class ConfigurationHelper {
             return null;
         } else {
             CacheManagerEventListenerFactory factory = (CacheManagerEventListenerFactory)
-                    ClassLoaderUtil.createNewInstance(loader, className);
-            Properties properties = PropertyUtil.parseProperties(cacheManagerEventListenerFactoryConfiguration.properties,
+                    createNewInstance(loader, className);
+            Properties properties = parseProperties(cacheManagerEventListenerFactoryConfiguration.properties,
                     cacheManagerEventListenerFactoryConfiguration.getPropertySeparator());
             return factory.createCacheManagerEventListener(cacheManager, properties);
         }
@@ -232,7 +226,7 @@ public final class ConfigurationHelper {
     public final Set createCaches() {
         Set caches = new HashSet();
         Set cacheConfigurations = configuration.getCacheConfigurations().entrySet();
-        for (Iterator iterator = cacheConfigurations.iterator(); iterator.hasNext();) {
+        for (Iterator iterator = cacheConfigurations.iterator(); iterator.hasNext(); ) {
             Map.Entry entry = (Map.Entry) iterator.next();
             CacheConfiguration cacheConfiguration = (CacheConfiguration) entry.getValue();
             Ehcache cache = createCache(cacheConfiguration);
@@ -276,7 +270,7 @@ public final class ConfigurationHelper {
     final Ehcache createCacheFromName(String name) {
         CacheConfiguration cacheConfiguration = null;
         Set cacheConfigurations = configuration.getCacheConfigurations().entrySet();
-        for (Iterator iterator = cacheConfigurations.iterator(); iterator.hasNext();) {
+        for (Iterator iterator = cacheConfigurations.iterator(); iterator.hasNext(); ) {
             Map.Entry entry = (Map.Entry) iterator.next();
             CacheConfiguration cacheConfigurationCandidate = (CacheConfiguration) entry.getValue();
             if (cacheConfigurationCandidate.name.equals(name)) {
@@ -296,12 +290,12 @@ public final class ConfigurationHelper {
      *
      * @param cacheConfiguration
      */
-    final Ehcache createCache(CacheConfiguration cacheConfiguration) {        
+    final Ehcache createCache(CacheConfiguration cacheConfiguration) {
         CacheConfiguration configClone = cacheConfiguration.clone();
-        
+
         // make sure all caches use the same classloader that the CacheManager is configured to use
         configClone.setClassLoader(configuration.getClassLoader());
-        
+
         Ehcache cache = new Cache(configClone, null, null);
         cache = applyCacheExceptionHandler(configClone, cache);
         return cache;
@@ -349,9 +343,10 @@ public final class ConfigurationHelper {
 
     /**
      * Creates default cache decorators specified in the default cache configuration if any
-     * @param cache the underlying cache that will be decorated
+     *
+     * @param cache                     the underlying cache that will be decorated
      * @param defaultCacheConfiguration default cache configuration
-     * @param loader 
+     * @param loader
      * @return list of decorated caches
      */
     public static List<Ehcache> createDefaultCacheDecorators(Ehcache cache, CacheConfiguration defaultCacheConfiguration, ClassLoader loader) {
@@ -359,7 +354,7 @@ public final class ConfigurationHelper {
             throw new CacheException("Underlying cache cannot be null when creating decorated caches.");
         }
         List<CacheDecoratorFactoryConfiguration> defaultCacheDecoratorConfigurations = defaultCacheConfiguration == null ?
-            null : defaultCacheConfiguration.getCacheDecoratorConfigurations();
+                null : defaultCacheConfiguration.getCacheDecoratorConfigurations();
         if (defaultCacheDecoratorConfigurations == null || defaultCacheDecoratorConfigurations.size() == 0) {
             LOG.debug("CacheDecoratorFactory not configured for defaultCache. Skipping for '" + cache.getName() + "'.");
             return Collections.emptyList();
@@ -386,7 +381,7 @@ public final class ConfigurationHelper {
      * Creates the decorated cache from the decorator config specified. Returns null if the name of the factory class is not specified
      */
     private static Ehcache createDecoratedCache(Ehcache cache,
-            CacheConfiguration.CacheDecoratorFactoryConfiguration factoryConfiguration, boolean forDefaultCache, ClassLoader loader) {
+                                                CacheConfiguration.CacheDecoratorFactoryConfiguration factoryConfiguration, boolean forDefaultCache, ClassLoader loader) {
         if (factoryConfiguration == null) {
             return null;
         }
@@ -395,8 +390,8 @@ public final class ConfigurationHelper {
             LOG.debug("CacheDecoratorFactory was specified without the name of the factory. Skipping...");
             return null;
         } else {
-            CacheDecoratorFactory factory = (CacheDecoratorFactory) ClassLoaderUtil.createNewInstance(loader, className);
-            Properties properties = PropertyUtil.parseProperties(factoryConfiguration.getProperties(),
+            CacheDecoratorFactory factory = (CacheDecoratorFactory) createNewInstance(loader, className);
+            Properties properties = parseProperties(factoryConfiguration.getProperties(),
                     factoryConfiguration.getPropertySeparator());
             if (forDefaultCache) {
                 return factory.createDefaultDecoratedEhcache(cache, properties);
@@ -405,11 +400,11 @@ public final class ConfigurationHelper {
             }
         }
     }
-    
+
     /**
-     * @deprecated internal use only
      * @param sa search attribute
      * @return attribute type as class
+     * @deprecated internal use only
      */
     public static Class<?> getSearchAttributeType(SearchAttribute sa, ClassLoader loader) {
         return sa.getType(loader);

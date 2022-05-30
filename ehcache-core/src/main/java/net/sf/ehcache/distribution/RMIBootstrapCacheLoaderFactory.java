@@ -23,9 +23,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
+import static net.sf.ehcache.util.PropertyUtil.extractLong;
+
 
 /**
  * A factory to create a configured RMIBootstrapCacheLoader
+ *
  * @author Greg Luck
  * @version $Id$
  */
@@ -67,32 +70,21 @@ public class RMIBootstrapCacheLoaderFactory extends BootstrapCacheLoaderFactory<
     }
 
     /**
-     *
      * @param properties the properties passed by the CacheManager, read from the configuration file
      * @return the max chunk size in bytes
      */
     protected int extractMaximumChunkSizeBytes(Properties properties) {
-        int maximumChunkSizeBytes;
-        String maximumChunkSizeBytesString = PropertyUtil.extractAndLogProperty(MAXIMUM_CHUNK_SIZE_BYTES, properties);
-        if (maximumChunkSizeBytesString != null) {
-            try {
-                int maximumChunkSizeBytesCandidate = Integer.parseInt(maximumChunkSizeBytesString);
-                if ((maximumChunkSizeBytesCandidate < FIVE_KB) || (maximumChunkSizeBytesCandidate > ONE_HUNDRED_MB)) {
-                    LOG.warn("Trying to set the chunk size to an unreasonable number. Using the default ({}) instead.", DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES);
-                    maximumChunkSizeBytes = DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES;
-                } else {
-                    maximumChunkSizeBytes = maximumChunkSizeBytesCandidate;
-                }
-            } catch (NumberFormatException e) {
-                LOG.warn("Number format exception trying to set chunk size. Using the default ({}) instead.", DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES);
-                maximumChunkSizeBytes = DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES;
+        long maximumChunkSizeBytes = extractLong(properties, MAXIMUM_CHUNK_SIZE_BYTES, DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES);
+        try {
+            if ((FIVE_KB <= maximumChunkSizeBytes) && (maximumChunkSizeBytes <= ONE_HUNDRED_MB)) {
+                return (int) maximumChunkSizeBytes;
             }
 
-        } else {
-            maximumChunkSizeBytes = DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES;
+            LOG.warn("Trying to set the chunk size to an unreasonable number. Using the default ({}) instead.", DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES);
+            return DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES;
+        } catch (NumberFormatException e) {
+            LOG.warn("Number format exception trying to set chunk size. Using the default ({}) instead.", DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES);
+            return DEFAULT_MAXIMUM_CHUNK_SIZE_BYTES;
         }
-
-        LOG.debug("MaximumChunkSizeBytes = {}", maximumChunkSizeBytes);
-        return maximumChunkSizeBytes;
     }
 }

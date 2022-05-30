@@ -17,8 +17,6 @@
 package net.sf.ehcache;
 
 
-import java.util.concurrent.TimeUnit;
-
 import net.sf.ehcache.util.PropertyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +52,13 @@ public class StopWatch {
     /**
      * An attempt to adjust performance tests to different machines.
      */
-    private static float speedAdjustmentFactor = 1;
+    private static float speedAdjustmentFactor = 1.f;
 
 
     /**
      * Used for performance benchmarking
      */
-    private long timeStamp = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+    private long timeStamp = System.currentTimeMillis();
 
 
     /**
@@ -74,7 +72,7 @@ public class StopWatch {
     static {
 
         String speedAdjustmentFactorString =
-                PropertyUtil.extractAndLogProperty("net.sf.ehcache.speedAdjustmentFactor", System.getProperties());
+                PropertyUtil.extractString(System.getProperties(), "net.sf.ehcache.speedAdjustmentFactor");
 
         if (speedAdjustmentFactorString != null) {
             try {
@@ -149,7 +147,7 @@ public class StopWatch {
      * Note this method returns notional time elapsed. See class description
      */
     public long getElapsedTime() {
-        long now = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+        long now = System.currentTimeMillis();
         long elapsed = (long) ((now - timeStamp) / getSpeedAdjustmentFactor());
         timeStamp = now;
         return elapsed;

@@ -5,7 +5,7 @@
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
  *
  *  Unless required by applicable law or agreed to in writing, software
  *  distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,9 +17,12 @@
 package net.sf.ehcache.terracotta;
 
 import net.sf.ehcache.bootstrap.BootstrapCacheLoaderFactory;
-import net.sf.ehcache.util.PropertyUtil;
 
 import java.util.Properties;
+
+import static net.sf.ehcache.util.PropertyUtil.extractBoolean;
+import static net.sf.ehcache.util.PropertyUtil.extractLong;
+import static net.sf.ehcache.util.PropertyUtil.extractString;
 
 /**
  * @author Alex Snaps
@@ -32,7 +35,7 @@ public class TerracottaBootstrapCacheLoaderFactory extends BootstrapCacheLoaderF
         final boolean asynchronous = extractBootstrapAsynchronously(properties);
         TerracottaBootstrapCacheLoader cacheLoader;
 
-        final String directory = PropertyUtil.extractAndLogProperty("directory", properties);
+        final String directory = extractString(properties, "directory");
         if (extractBoolean(properties, "doKeySnapshot", true)) {
             cacheLoader = new TerracottaBootstrapCacheLoader(asynchronous,
                 directory,

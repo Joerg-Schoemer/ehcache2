@@ -1,42 +1,38 @@
 /**
- *  Copyright Terracotta, Inc.
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.distribution;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import net.sf.ehcache.Element;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.mockito.Mockito;
+import org.terracotta.test.categories.CheckShorts;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.lang.ref.Reference;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import net.sf.ehcache.AbstractCacheTest;
-import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.Element;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static java.util.Collections.singletonList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 /**
  * Note these tests need a live network interface running in multicast mode to work
@@ -44,128 +40,85 @@ import org.junit.Test;
  * @author <a href="mailto:gluck@thoughtworks.com">Greg Luck</a>
  * @version $Id$
  */
-public class PayloadUtilTest extends AbstractRMITest {
+@Category(CheckShorts.class)
+public class PayloadUtilTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PayloadUtilTest.class.getName());
-    private static final Random RANDOM = new Random(System.currentTimeMillis());
+    private static final Random RANDOM = new SecureRandom();
     private static final String RANDOM_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.";
-    private CacheManager manager;
 
-    /**
-     * setup test
-     *
-     * @throws Exception
-     */
-    @Before
-    public void setUp() throws Exception {
-        String fileName = AbstractCacheTest.TEST_CONFIG_DIR + "ehcache-big.xml";
-        manager = new CacheManager(fileName);
-    }
-
-    /**
-     * Shuts down the cachemanager
-     *
-     * @throws Exception
-     */
-    @After
-    public void tearDown() throws Exception {
-        manager.shutdown();
-    }
-
-    /**
-     * The maximum Ethernet MTU is 1500 bytes.
-     * <p>
-     * We want to be able to work with 100 caches
-     */
     @Test
-    public void testMaximumDatagram() throws IOException {
-        String payload = createReferenceString();
+    public void createCompressedPayloadWithOneUrl() {
+        List<CachePeer> list = singletonList(new PayloadUtilTestCachePeer("hugo"));
 
-        final byte[] compressed = PayloadUtil.gzip(payload.getBytes());
+        List<byte[]> compressedPayload = PayloadUtil.createCompressedPayload(list, PayloadUtil.MTU);
 
-        int length = compressed.length;
-        LOG.info("gzipped size: " + length);
-        assertTrue("Heartbeat too big for one Datagram " + length, length <= 1500);
-
-    }
-
-    private String createReferenceString() {
-
-        String[] names = manager.getCacheNames();
-        String urlBase = "//localhost.localdomain:12000/";
-        StringBuilder buffer = new StringBuilder();
-        for (String name : names) {
-            buffer.append(urlBase);
-            buffer.append(name);
-            buffer.append("|");
-        }
-        String payload = buffer.toString();
-        return payload;
+        assertThat(compressedPayload).hasSize(1);
     }
 
     @Test
-    public void testBigPayload() throws RemoteException, IOException {
-        List<CachePeer> bigPayloadList = new ArrayList<CachePeer>();
-        // create 5000 peers, each peer having cache name between 50 - 500 char length
-        int peers = 5000;
-        int minCacheNameSize = 50;
-        int maxCacheNameSize = 500;
-        for (int i = 0; i < peers; i++) {
-            bigPayloadList.add(new PayloadUtilTestCachePeer(getRandomName(minCacheNameSize, maxCacheNameSize)));
-        }
+    public void createCompressedPayloadListWith10PeersAndOnly5UrlsPerSend() {
+        List<CachePeer> list = IntStream.range(1, 11)
+                .mapToObj(i -> new PayloadUtilTestCachePeer("Cache " + (Integer) i))
+                .collect(Collectors.toList());
 
-        doTestBigPayLoad(bigPayloadList, 5);
-        doTestBigPayLoad(bigPayloadList, 10);
-        doTestBigPayLoad(bigPayloadList, 50);
-        doTestBigPayLoad(bigPayloadList, 100);
-        doTestBigPayLoad(bigPayloadList, 150);
-        doTestBigPayLoad(bigPayloadList, 300);
-        doTestBigPayLoad(bigPayloadList, 500);
+        List<byte[]> compressedPayload = PayloadUtil.createCompressedPayloadList(list, 5);
 
-        // do a big test where maximumPeersPerSend is a large value, try to accomodate all peers in one payload
-        // this should result in payload breaking up by MTU size
-        doTestBigPayLoad(bigPayloadList, 1000000);
-
-        // test heartbeat won't work when single cache has very very long cacheName
-        bigPayloadList.clear();
-        bigPayloadList.add(new PayloadUtilTestCachePeer(getRandomName(3000, 3001)));
-        List<byte[]> compressedList = PayloadUtil.createCompressedPayloadList(bigPayloadList, 150);
-        assertEquals(0, compressedList.size());
-
+        assertThat(compressedPayload).hasSize(2);
     }
 
-    private void doTestBigPayLoad(List<CachePeer> bigPayloadList, int maximumPeersPerSend) throws RemoteException, IOException {
-        List<byte[]> compressedList = PayloadUtil.createCompressedPayloadList(bigPayloadList, maximumPeersPerSend);
-        // the big list cannot be compressed in 1 entry
-        assertTrue(compressedList.size() > 1);
-        StringBuilder actual = new StringBuilder();
-        for (byte[] bytes : compressedList) {
-            assertTrue("One payload should not be greater than MTU, actual size: " + bytes.length + ", MTU: " + PayloadUtil.MTU,
-                    bytes.length <= PayloadUtil.MTU);
-            String urlList = new String(PayloadUtil.ungzip(bytes));
-            String[] urls = urlList.split(PayloadUtil.URL_DELIMITER_REGEXP);
-            assertTrue("Number of URL's in one payload should not exceed maximumPeersPerSend (=" + maximumPeersPerSend + "), actual: "
-                    + urls.length, urls.length <= maximumPeersPerSend);
+    @Test
+    public void createCompressedPayloadWithToMuchUrlsForOneDatagram() {
+        List<CachePeer> list = IntStream.range(1, 1000)
+                .mapToObj(i -> new PayloadUtilTestCachePeer("Cache" + i))
+                .collect(Collectors.toList());
 
-            if (bytes == compressedList.get(compressedList.size() - 1)) {
-                actual.append(urlList);
-            } else {
-                actual.append(urlList + PayloadUtil.URL_DELIMITER);
-            }
-        }
-        StringBuilder expected = new StringBuilder();
-        for (CachePeer peer : bigPayloadList) {
-            if (peer != bigPayloadList.get(bigPayloadList.size() - 1)) {
-                expected.append(peer.getUrl() + PayloadUtil.URL_DELIMITER);
-            } else {
-                expected.append(peer.getUrl());
-            }
-        }
-        assertEquals(expected.toString(), actual.toString());
+        List<byte[]> compressedPayload = PayloadUtil.createCompressedPayload(list, 1500);
+
+        assertThat(compressedPayload)
+                .hasSize(2)
+                .map(i -> i.length)
+                .containsExactly(1246, 1235);
     }
 
-    private String getRandomName(final int minLength, final int maxLength) {
-        int length = minLength + RANDOM.nextInt(maxLength - minLength);
+    @Test
+    public void heartbeatWontWork() {
+        List<CachePeer> peerList = singletonList(new PayloadUtilTestCachePeer(getRandomName(3000)));
+        List<byte[]> compressedList = PayloadUtil.createCompressedPayload(peerList, PayloadUtil.MTU);
+
+        assertThat(compressedList).isEmpty();
+    }
+
+    @Test
+    public void unzip() throws Exception {
+        byte[] compressed = PayloadUtil.gzip("Test".getBytes());
+        byte[] ungzip = PayloadUtil.ungzip(compressed);
+
+        assertThat(new String(ungzip)).isEqualTo("Test");
+    }
+
+    @Test
+    public void unzipWithMoreData() throws Exception {
+        byte[] bytes = new byte[PayloadUtil.MTU * 2];
+        new SecureRandom().nextBytes(bytes);
+        byte[] compressed = PayloadUtil.gzip(bytes);
+        byte[] ungzip = PayloadUtil.ungzip(compressed);
+
+        assertThat(ungzip).isEqualTo(bytes);
+    }
+
+
+
+    @Test
+    public void getUrlWillThrowRemoteException() throws RemoteException {
+        CachePeer mock = Mockito.mock(CachePeer.class);
+        given(mock.getUrl()).willThrow(RemoteException.class);
+
+        List<byte[]> compressedPayload = PayloadUtil.createCompressedPayload(singletonList(mock), 10);
+        assertThat(compressedPayload).isEmpty();
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    String getRandomName(int length) {
         StringBuilder rv = new StringBuilder();
         for (int i = 0; i < length; i++) {
             rv.append(RANDOM_CHARS.charAt(RANDOM.nextInt(RANDOM_CHARS.length())));
@@ -201,7 +154,7 @@ public class PayloadUtilTest extends AbstractRMITest {
          *
          * @see net.sf.ehcache.distribution.CachePeer#getElements(java.util.List)
          */
-        public List getElements(List keys) throws RemoteException {
+        public List<Element> getElements(List<Serializable> keys) throws RemoteException {
             // no-op
             return null;
         }
@@ -221,7 +174,7 @@ public class PayloadUtilTest extends AbstractRMITest {
          *
          * @see net.sf.ehcache.distribution.CachePeer#getKeys()
          */
-        public List getKeys() throws RemoteException {
+        public List<Serializable> getKeys() throws RemoteException {
             // no-op
             return null;
         }
@@ -233,7 +186,7 @@ public class PayloadUtilTest extends AbstractRMITest {
          */
         public String getName() throws RemoteException {
             // no-op
-            return null;
+            return cacheName;
         }
 
         /**

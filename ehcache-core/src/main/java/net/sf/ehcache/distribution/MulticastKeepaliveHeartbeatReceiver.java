@@ -45,9 +45,9 @@ public class MulticastKeepaliveHeartbeatReceiver {
 
     private static final Logger LOG = LoggerFactory.getLogger(MulticastKeepaliveHeartbeatReceiver.class);
 
-    private final ExecutorService processingThreadPool;
+    private final ExecutorService processingThreadPool = Executors.newCachedThreadPool(new NamedThreadFactory("Multicast keep-alive Heartbeat Receiver"));
     private final Thread receiverThread = new Thread(null, this::receiveHeartBeats, "Multicast Heartbeat Receiver Thread");
-    private final Set<String> rmiUrlsProcessingQueue = Collections.synchronizedSet(new HashSet<>());
+    private final Set<String> rmiUrlsProcessingSet = Collections.synchronizedSet(new HashSet<>());
 
     private final InetAddress groupMulticastAddress;
     private final Integer groupMulticastPort;
@@ -64,12 +64,16 @@ public class MulticastKeepaliveHeartbeatReceiver {
      * @param multicastPort    the multicast port
      * @param hostAddress      the host address of the interface to bind to
      */
-    public MulticastKeepaliveHeartbeatReceiver(MulticastRMICacheManagerPeerProvider peerProvider, InetAddress multicastAddress, Integer multicastPort, InetAddress hostAddress) {
+    public MulticastKeepaliveHeartbeatReceiver(
+            MulticastRMICacheManagerPeerProvider peerProvider,
+            InetAddress multicastAddress,
+            Integer multicastPort,
+            InetAddress hostAddress
+    ) {
         this.peerProvider = peerProvider;
         this.groupMulticastAddress = multicastAddress;
         this.groupMulticastPort = multicastPort;
         this.hostAddress = hostAddress;
-        this.processingThreadPool = Executors.newCachedThreadPool(new NamedThreadFactory("Multicast keep-alive Heartbeat Receiver"));
         this.receiverThread.setDaemon(true);
     }
 
@@ -149,13 +153,13 @@ public class MulticastKeepaliveHeartbeatReceiver {
      */
     synchronized void processRmiUrls(final String rmiUrls) {
 
-        if (rmiUrlsProcessingQueue.contains(rmiUrls)) {
+        if (rmiUrlsProcessingSet.contains(rmiUrls)) {
             LOG.warn("We are already processing these rmiUrls. Another heartbeat came before we maybe finished: {}", rmiUrls);
             return;
         }
 
         // Add the rmiUrls we are processing.
-        rmiUrlsProcessingQueue.add(rmiUrls);
+        rmiUrlsProcessingSet.add(rmiUrls);
 
         processingThreadPool.execute(() -> {
             try {
@@ -167,7 +171,7 @@ public class MulticastKeepaliveHeartbeatReceiver {
                 }
             } finally {
                 // Remove the rmiUrls we just processed
-                rmiUrlsProcessingQueue.remove(rmiUrls);
+                rmiUrlsProcessingSet.remove(rmiUrls);
             }
         });
     }
@@ -179,7 +183,7 @@ public class MulticastKeepaliveHeartbeatReceiver {
      * caught our onw multicast, and it should be ignored.
      */
     boolean isSelf(String rmiUrls) {
-        CacheManagerPeerListener cacheManagerPeerListener = peerProvider.getCacheManager().getCachePeerListener("RMI");
+        CacheManagerPeerListener cacheManagerPeerListener = peerProvider.getCachePeerListener();
         if (cacheManagerPeerListener == null) {
             return false;
         }

@@ -38,10 +38,10 @@ public class TestCacheManagerEventListenerFactory extends CacheManagerEventListe
      * @return a constructed CacheManagerEventListener
      */
     public CacheManagerEventListener createCacheManagerEventListener(CacheManager cacheManager, Properties properties) {
-        String type = PropertyUtil.extractAndLogProperty("type", properties);
-        if (type.equals("null") || type.equals("null")) {
+        String type = PropertyUtil.extractString(properties, "type");
+        if ("null".equals(type)) {
             return null;
-        } else if (type.equals("counting")) {
+        } else if ("counting".equals(type)) {
             return new CountingCacheManagerEventListener();
         } else {
             return null;

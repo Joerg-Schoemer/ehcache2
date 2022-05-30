@@ -58,7 +58,7 @@ import static java.lang.Thread.sleep;
  * @author Greg Luck
  * @version $Id$
  */
-public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerProvider implements CacheManagerPeerProvider {
+public class MulticastRMICacheManagerPeerProvider extends AbstractRMICacheManagerPeerProvider {
 
     private static final String STATE_CHECKER_THREAD_NAME = "State Checker Thread";
     private static final Logger LOG = LoggerFactory.getLogger(MulticastRMICacheManagerPeerProvider.class);
@@ -66,12 +66,11 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
     /**
      * Contains a RMI URLs of the form: "//" + hostName + ":" + port + "/" + cacheName as key
      */
-    private final Map<String, CachePeerStateEntry> activePeerUrls = Collections.synchronizedMap(new HashMap<>());
+    final Map<String, CachePeerState> activePeerUrls = Collections.synchronizedMap(new HashMap<>());
 
     private final MulticastKeepaliveHeartbeatReceiver heartBeatReceiver;
     private final MulticastKeepaliveHeartbeatSender heartBeatSender;
     private final Thread staleCheckerThread = new Thread(null, this::rmiUrlsStateChecker, STATE_CHECKER_THREAD_NAME);
-
 
 
     /**
@@ -90,7 +89,7 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
         super(cacheManager);
 
         heartBeatReceiver = new MulticastKeepaliveHeartbeatReceiver(this, groupMulticastAddress, groupMulticastPort, hostAddress);
-        heartBeatSender = new MulticastKeepaliveHeartbeatSender(cacheManager, groupMulticastAddress, groupMulticastPort, timeToLive, hostAddress);
+        heartBeatSender = new MulticastKeepaliveHeartbeatSender(this, groupMulticastAddress, groupMulticastPort, timeToLive, hostAddress);
         staleCheckerThread.setDaemon(true);
     }
 
@@ -102,15 +101,15 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
      * @param rmiUrl the URL to register
      */
     public synchronized void registerPeer(String rmiUrl) {
-        CachePeerStateEntry cachePeerStateEntry = activePeerUrls.get(rmiUrl);
-        if (cachePeerStateEntry == null) {
-            // not known before
+        CachePeerState cachePeerState = activePeerUrls.computeIfAbsent(rmiUrl, this::createStateEntry);
+        // record last seen
+        cachePeerState.touch();
+    }
 
-            activePeerUrls.put(rmiUrl, new CachePeerStateEntry(rmiUrl));
-        } else {
-            // record last seen
-            cachePeerStateEntry.touch();
-        }
+    private CachePeerState createStateEntry(String rmiUrl) {
+        LOG.debug("register rmiUrl {}", rmiUrl);
+
+        return new CachePeerState(rmiUrl);
     }
 
     public synchronized void unregisterPeer(String rmiUrl) {
@@ -122,24 +121,27 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
         return new TreeSet<>(activePeerUrls.keySet());
     }
 
+    @SuppressWarnings("BusyWait")
     void rmiUrlsStateChecker() {
         while (true) {
             try {
                 sleep(MulticastKeepaliveHeartbeatSender.getHeartBeatInterval());
 
                 synchronized (this) {
-                    for (Iterator<Map.Entry<String, CachePeerStateEntry>> iterator = activePeerUrls.entrySet().iterator(); iterator.hasNext(); ) {
-                        Map.Entry<String, CachePeerStateEntry> entry = iterator.next();
+                    for (Iterator<Map.Entry<String, CachePeerState>> iterator = activePeerUrls.entrySet().iterator(); iterator.hasNext(); ) {
+                        Map.Entry<String, CachePeerState> entry = iterator.next();
 
-                        PeerState peerState = entry.getValue().peerState();
+                        CachePeerState value = entry.getValue();
+                        PeerState peerState = value.getState();
+                        LOG.trace("peer entry {} state {}", value, peerState);
                         if (peerState == PeerState.STALE) {
-                            LOG.warn("peer entry {} is {}, will be removed from peer list", entry.getKey(), peerState);
+                            LOG.warn("peer entry {} is {}, removed from peer list!", entry.getKey(), peerState);
                             iterator.remove();
                         }
                     }
                 }
             } catch (InterruptedException e) {
-                LOG.info("{} interrupted, quitting", STATE_CHECKER_THREAD_NAME);
+                LOG.debug("{} interrupted, quitting", STATE_CHECKER_THREAD_NAME);
                 return;
             }
         }
@@ -188,45 +190,48 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
     /**
      * Entry containing a looked up CachePeer and date
      */
-    private class CachePeerStateEntry {
+    private class CachePeerState {
 
+        /**
+         * the RMI url.
+         */
         private final String rmiUrl;
 
         /**
          * last access date.
          */
-        private Date lastAccess;
+        private Date lastAccessed;
 
         /**
-         * date when the entry got stale.
+         * date when the entry got unhealthy.
          */
-        private Date staleSince;
+        private Date unhealthySince;
 
         /**
-         * @param rmiUrl    the RMI URL of the peer
+         * @param rmiUrl the RMI URL of the peer
          */
-        CachePeerStateEntry(String rmiUrl) {
+        CachePeerState(String rmiUrl) {
             this.rmiUrl = rmiUrl;
-            this.lastAccess = new Date();
+            this.lastAccessed = new Date();
         }
 
         void touch() {
-            this.lastAccess = new Date();
-            if (staleSince != null) {
+            this.lastAccessed = new Date();
+            if (unhealthySince != null) {
                 LOG.info("rmiUrl {} has changed to {} state", rmiUrl, PeerState.HEALTHY);
-                this.staleSince = null;
+                this.unhealthySince = null;
             }
         }
 
-        boolean isNotStale() {
-            boolean stale = lastAccess.getTime() < (System.currentTimeMillis() - getStaleTime());
+        boolean isHealthy() {
+            boolean unhealthy = lastAccessed.getTime() < (System.currentTimeMillis() - getStaleTime());
 
-            if (stale && this.staleSince == null) {
+            if (unhealthy && this.unhealthySince == null) {
                 LOG.warn("rmiUrl {} has changed to {} state", rmiUrl, PeerState.UNHEALTHY);
-                this.staleSince = new Date();
+                this.unhealthySince = new Date();
             }
 
-            return this.staleSince == null;
+            return this.unhealthySince == null;
         }
 
         /**
@@ -236,12 +241,16 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
          *
          * @return true if stale for a longer time
          */
-        PeerState peerState() {
-            if (isNotStale()) {
+        PeerState getState() {
+            if (isHealthy()) {
                 return PeerState.HEALTHY;
             }
 
-            return staleSince.before(getExpireDate()) ? PeerState.STALE : PeerState.UNHEALTHY;
+            if (!lookupRemoteCachePeer(rmiUrl).isPresent()) {
+                return PeerState.STALE;
+            }
+
+            return unhealthySince.before(getExpireDate()) ? PeerState.STALE : PeerState.UNHEALTHY;
         }
 
         Date getExpireDate() {
@@ -249,18 +258,18 @@ public class MulticastRMICacheManagerPeerProvider extends RMICacheManagerPeerPro
             instance.add(Calendar.MILLISECOND, -getExpireDuration());
             return instance.getTime();
         }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + "[ rmiUrl=" + rmiUrl
+                    + ", lastAccessed=" + this.lastAccessed
+                    + ", unhealthySince=" + this.unhealthySince
+                    + " ]";
+        }
     }
 
     int getExpireDuration() {
-        return (((int) MulticastKeepaliveHeartbeatSender.getHeartBeatInterval()) * 12);
-    }
-
-    /**
-     * @return the MulticastKeepaliveHeartbeatReceiver
-     */
-    @SuppressWarnings("unused")
-    public MulticastKeepaliveHeartbeatReceiver getHeartBeatReceiver() {
-        return heartBeatReceiver;
+        return (int) MulticastKeepaliveHeartbeatSender.getHeartBeatInterval() * 12;
     }
 
     /**

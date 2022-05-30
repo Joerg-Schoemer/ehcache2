@@ -1,17 +1,17 @@
 /**
- *  Copyright Terracotta, Inc.
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.distribution;
@@ -19,11 +19,12 @@ package net.sf.ehcache.distribution;
 import net.sf.ehcache.event.CacheEventListener;
 import net.sf.ehcache.event.CacheEventListenerFactory;
 import net.sf.ehcache.util.PropertyUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Properties;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static net.sf.ehcache.util.PropertyUtil.extractBoolean;
 
 
 /**
@@ -46,14 +47,20 @@ public class RMICacheReplicatorFactory extends CacheEventListenerFactory {
      * A default for the amount of time the replication thread sleeps after it detects the replicationQueue is empty
      * before checking again.
      */
-    protected static final int DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS = 1000;
-    
+    private static final int DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS = 1000;
+
     /**
      * A default for the maximum number of operations in an RMI message.
      */
-    protected static final int DEFAULT_ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE = 1000;
+    private static final int DEFAULT_ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE = 1000;
 
-    private static final Logger LOG = LoggerFactory.getLogger(RMICacheReplicatorFactory.class.getName());
+    /**
+     * Minimum wait time.
+     */
+    private static final int MINIMUM_REASONABLE_INTERVAL = 10;
+
+    private static final Logger LOG = LoggerFactory.getLogger(RMICacheReplicatorFactory.class);
+
     private static final String REPLICATE_PUTS = "replicatePuts";
     private static final String REPLICATE_PUTS_VIA_COPY = "replicatePutsViaCopy";
     private static final String REPLICATE_UPDATES = "replicateUpdates";
@@ -62,7 +69,6 @@ public class RMICacheReplicatorFactory extends CacheEventListenerFactory {
     private static final String REPLICATE_ASYNCHRONOUSLY = "replicateAsynchronously";
     private static final String ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS = "asynchronousReplicationIntervalMillis";
     private static final String ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE = "asynchronousReplicationMaximumBatchSize";
-    private static final int MINIMUM_REASONABLE_INTERVAL = 10;
 
     /**
      * Create a <code>CacheEventListener</code> which is also a CacheReplicator.
@@ -94,16 +100,18 @@ public class RMICacheReplicatorFactory extends CacheEventListenerFactory {
      * @return a constructed CacheEventListener
      */
     public final CacheEventListener createCacheEventListener(Properties properties) {
-        boolean replicatePuts = extractReplicatePuts(properties);
-        boolean replicatePutsViaCopy = extractReplicatePutsViaCopy(properties);
-        boolean replicateUpdates = extractReplicateUpdates(properties);
-        boolean replicateUpdatesViaCopy = extractReplicateUpdatesViaCopy(properties);
-        boolean replicateRemovals = extractReplicateRemovals(properties);
-        boolean replicateAsynchronously = extractReplicateAsynchronously(properties);
-        int replicationIntervalMillis = extractReplicationIntervalMilis(properties);
-        int maximumBatchSize = extractMaximumBatchSize(properties);
+
+        boolean replicatePuts = extractBoolean(properties, REPLICATE_PUTS, true);
+        boolean replicatePutsViaCopy = extractBoolean(properties, REPLICATE_PUTS_VIA_COPY, true);
+        boolean replicateUpdates = extractBoolean(properties, REPLICATE_UPDATES, true);
+        boolean replicateUpdatesViaCopy = extractBoolean(properties, REPLICATE_UPDATES_VIA_COPY, true);
+        boolean replicateRemovals = extractBoolean(properties, REPLICATE_REMOVALS, true);
+        boolean replicateAsynchronously = extractBoolean(properties, REPLICATE_ASYNCHRONOUSLY, true);
 
         if (replicateAsynchronously) {
+            int replicationIntervalMillis = extractReplicationIntervalMilis(properties);
+            int maximumBatchSize = extractMaximumBatchSize(properties);
+
             return new RMIAsynchronousCacheReplicator(
                     replicatePuts,
                     replicatePutsViaCopy,
@@ -125,144 +133,39 @@ public class RMICacheReplicatorFactory extends CacheEventListenerFactory {
     /**
      * Extracts the value of asynchronousReplicationIntervalMillis. Sets it to 1000ms if
      * either not set or there is a problem parsing the number
-     * @param properties
      */
     protected int extractReplicationIntervalMilis(Properties properties) {
-        int asynchronousReplicationIntervalMillis;
         String asynchronousReplicationIntervalMillisString =
-                PropertyUtil.extractAndLogProperty(ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS, properties);
-        if (asynchronousReplicationIntervalMillisString != null) {
-            try {
-                int asynchronousReplicationIntervalMillisCandidate =
-                        Integer.parseInt(asynchronousReplicationIntervalMillisString);
-                if (asynchronousReplicationIntervalMillisCandidate < MINIMUM_REASONABLE_INTERVAL) {
-                    LOG.debug("Trying to set the asynchronousReplicationIntervalMillis to an unreasonable number." +
-                            " Using the default instead.");
-                    asynchronousReplicationIntervalMillis = DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS;
-                } else {
-                    asynchronousReplicationIntervalMillis = asynchronousReplicationIntervalMillisCandidate;
-                }
-            } catch (NumberFormatException e) {
-                LOG.warn("Number format exception trying to set asynchronousReplicationIntervalMillis. " +
-                        "Using the default instead. String value was: '" + asynchronousReplicationIntervalMillisString + "'");
-                asynchronousReplicationIntervalMillis = DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS;
+                PropertyUtil.extractString(properties, ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS, "" + DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS);
+        try {
+            int asynchronousReplicationIntervalMillis = Integer.parseInt(asynchronousReplicationIntervalMillisString);
+            if (asynchronousReplicationIntervalMillis < MINIMUM_REASONABLE_INTERVAL) {
+                LOG.debug("Trying to set the asynchronousReplicationIntervalMillis to an unreasonable number." +
+                        " Using the default {}ms instead.", DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS);
+                return DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS;
+            } else {
+                return asynchronousReplicationIntervalMillis;
             }
-        } else {
-            asynchronousReplicationIntervalMillis = DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS;
+        } catch (NumberFormatException e) {
+            LOG.warn("Number format exception trying to set asynchronousReplicationIntervalMillis. " +
+                    "Using the default instead. String value was: '" + asynchronousReplicationIntervalMillisString + "'");
+            return DEFAULT_ASYNCHRONOUS_REPLICATION_INTERVAL_MILLIS;
         }
-        return asynchronousReplicationIntervalMillis;
     }
 
     /**
      * Extracts the value of maximumBatchSize. Sets it to 1024 if
      * either not set or there is a problem parsing the number
-     * @param properties
      */
     protected int extractMaximumBatchSize(Properties properties) {
-        String maximumBatchSizeString = 
-                PropertyUtil.extractAndLogProperty(ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE, properties);
-        if (maximumBatchSizeString == null) {
+        String maximumBatchSizeString = PropertyUtil.extractString(properties, ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE, "" + DEFAULT_ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE);
+        try {
+            return Integer.parseInt(maximumBatchSizeString);
+        } catch (NumberFormatException e) {
+            LOG.warn("Number format exception trying to set maximumBatchSize. " +
+                    "Using the default instead. String value was: '" + maximumBatchSizeString + "'");
             return DEFAULT_ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE;
-        } else {
-            try {
-                return Integer.parseInt(maximumBatchSizeString);
-            } catch (NumberFormatException e) {
-                LOG.warn("Number format exception trying to set maximumBatchSize. " +
-                        "Using the default instead. String value was: '" + maximumBatchSizeString + "'");
-                return DEFAULT_ASYNCHRONOUS_REPLICATION_MAXIMUM_BATCH_SIZE;
-            }
         }
     }
-    
-    /**
-     * Extracts the value of replicateAsynchronously from the properties
-     * @param properties
-     */
-    protected boolean extractReplicateAsynchronously(Properties properties) {
-        boolean replicateAsynchronously;
-        String replicateAsynchronouslyString = PropertyUtil.extractAndLogProperty(REPLICATE_ASYNCHRONOUSLY, properties);
-        if (replicateAsynchronouslyString != null) {
-            replicateAsynchronously = PropertyUtil.parseBoolean(replicateAsynchronouslyString);
-        } else {
-            replicateAsynchronously = true;
-        }
-        return replicateAsynchronously;
-    }
-
-    /**
-     * Extracts the value of replicateRemovals from the properties
-     * @param properties
-     */
-    protected boolean extractReplicateRemovals(Properties properties) {
-        boolean replicateRemovals;
-        String replicateRemovalsString = PropertyUtil.extractAndLogProperty(REPLICATE_REMOVALS, properties);
-        if (replicateRemovalsString != null) {
-            replicateRemovals = PropertyUtil.parseBoolean(replicateRemovalsString);
-        } else {
-            replicateRemovals = true;
-        }
-        return replicateRemovals;
-    }
-
-    /**
-     * Extracts the value of replicateUpdatesViaCopy from the properties
-     * @param properties
-     */
-    protected boolean extractReplicateUpdatesViaCopy(Properties properties) {
-        boolean replicateUpdatesViaCopy;
-        String replicateUpdatesViaCopyString = PropertyUtil.extractAndLogProperty(REPLICATE_UPDATES_VIA_COPY, properties);
-        if (replicateUpdatesViaCopyString != null) {
-            replicateUpdatesViaCopy = PropertyUtil.parseBoolean(replicateUpdatesViaCopyString);
-        } else {
-            replicateUpdatesViaCopy = true;
-        }
-        return replicateUpdatesViaCopy;
-    }
-
-    /**
-     * Extracts the value of replicatePutsViaCopy from the properties
-     * @param properties
-     */
-    protected boolean extractReplicatePutsViaCopy(Properties properties) {
-        boolean replicatePutsViaCopy;
-        String replicatePutsViaCopyString = PropertyUtil.extractAndLogProperty(REPLICATE_PUTS_VIA_COPY, properties);
-        if (replicatePutsViaCopyString != null) {
-            replicatePutsViaCopy = PropertyUtil.parseBoolean(replicatePutsViaCopyString);
-        } else {
-            replicatePutsViaCopy = true;
-        }
-        return replicatePutsViaCopy;
-    }
-
-    /**
-     * Extracts the value of replicateUpdates from the properties
-     * @param properties
-     */
-    protected boolean extractReplicateUpdates(Properties properties) {
-        boolean replicateUpdates;
-        String replicateUpdatesString = PropertyUtil.extractAndLogProperty(REPLICATE_UPDATES, properties);
-        if (replicateUpdatesString != null) {
-            replicateUpdates = PropertyUtil.parseBoolean(replicateUpdatesString);
-        } else {
-            replicateUpdates = true;
-        }
-        return replicateUpdates;
-    }
-
-    /**
-     * Extracts the value of replicatePuts from the properties
-     * @param properties
-     */
-    protected boolean extractReplicatePuts(Properties properties) {
-        boolean replicatePuts;
-        String replicatePutsString = PropertyUtil.extractAndLogProperty(REPLICATE_PUTS, properties);
-        if (replicatePutsString != null) {
-            replicatePuts = PropertyUtil.parseBoolean(replicatePutsString);
-        } else {
-            replicatePuts = true;
-        }
-        return replicatePuts;
-    }
-
 
 }

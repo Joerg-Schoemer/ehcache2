@@ -27,7 +27,7 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -38,28 +38,21 @@ import java.util.stream.Collectors;
  * @author Greg Luck
  * @version $Id$
  */
-public abstract class RMICacheManagerPeerProvider implements CacheManagerPeerProvider {
+public abstract class AbstractRMICacheManagerPeerProvider implements CacheManagerPeerProvider {
 
-    private static final Logger LOG = LoggerFactory.getLogger(RMICacheManagerPeerProvider.class.getName());
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractRMICacheManagerPeerProvider.class);
 
     /**
      * The CacheManager this peer provider is associated with.
      */
-    protected CacheManager cacheManager;
+    private final CacheManager cacheManager;
 
 
     /**
      * @param cacheManager The CacheManager to associate to for this provider.
      */
-    public RMICacheManagerPeerProvider(CacheManager cacheManager) {
+    public AbstractRMICacheManagerPeerProvider(CacheManager cacheManager) {
         this.cacheManager = cacheManager;
-    }
-
-    /**
-     * Empty constructor
-     */
-    public RMICacheManagerPeerProvider() {
-        //nothing to do
     }
 
     /**
@@ -79,14 +72,14 @@ public abstract class RMICacheManagerPeerProvider implements CacheManagerPeerPro
      *
      * @return an RMI Proxy or <code>null</code> if look-up fails.
      */
-    CachePeer lookupRemoteCachePeer(String url) {
+    Optional<CachePeer> lookupRemoteCachePeer(String url) {
         LOG.debug("Lookup URL {}", url);
 
         try {
-            return (CachePeer) Naming.lookup(url);
+            return Optional.of((CachePeer) Naming.lookup(url));
         } catch (NotBoundException | MalformedURLException | RemoteException e) {
             LOG.warn("could not lookup rmiUrl {}: {}", url, e.getMessage());
-            return null;
+            return Optional.empty();
         }
     }
 
@@ -100,13 +93,19 @@ public abstract class RMICacheManagerPeerProvider implements CacheManagerPeerPro
         return getRegisteredRmiUrls().stream()
                 .filter((rmiUrl) -> isSameCache(rmiUrl, cache.getName()))
                 .map(this::lookupRemoteCachePeer)
-                .filter(Objects::nonNull)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .collect(Collectors.toList());
     }
 
     @Override
     public void init() {
         // nothing to do.
+    }
+
+    @Override
+    public void dispose() {
+        //nothing to do.
     }
 
     /**
@@ -122,16 +121,8 @@ public abstract class RMICacheManagerPeerProvider implements CacheManagerPeerPro
         return sameCacheName;
     }
 
-    @Override
-    public void dispose() {
-        //nothing to do.
-    }
-
-    /**
-     * The cacheManager this provider is bound to
-     */
-    public final CacheManager getCacheManager() {
-        return cacheManager;
+    public CacheManagerPeerListener getCachePeerListener() {
+        return cacheManager.getCachePeerListener(getScheme());
     }
 
     /**

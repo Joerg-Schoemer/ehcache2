@@ -34,17 +34,15 @@ import org.junit.Test;
 import java.net.SocketTimeoutException;
 import java.rmi.RemoteException;
 import java.rmi.UnmarshalException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import net.sf.ehcache.config.CacheConfiguration;
 import net.sf.ehcache.config.Configuration;
-import net.sf.ehcache.distribution.RmiEventMessage.RmiEventType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,8 +111,10 @@ public class RMICacheManagerPeerIT extends AbstractRMITest {
 
 
                 try {
-                    CachePeer cachePeer = new ManualRMICacheManagerPeerProvider().lookupRemoteCachePeer(rmiCachePeer.getUrl());
-                    cachePeer.put(new Element("1", new Date()));
+                    Optional<CachePeer> cachePeer = new ManualRMICacheManagerPeerProvider(manager).lookupRemoteCachePeer(rmiCachePeer.getUrl());
+                    if (cachePeer.isPresent()) {
+                        cachePeer.get().put(new Element("1", new Date()));
+                    }
                     fail();
                 } catch (UnmarshalException e) {
                     assertEquals(SocketTimeoutException.class, e.getCause().getClass());
@@ -145,8 +145,10 @@ public class RMICacheManagerPeerIT extends AbstractRMITest {
                 peerListener.addCachePeer(cache.getName(), rmiCachePeer);
                 peerListener.init();
 
-                CachePeer cachePeer = new ManualRMICacheManagerPeerProvider().lookupRemoteCachePeer(rmiCachePeer.getUrl());
-                cachePeer.put(new Element("1", new Date()));
+                Optional<CachePeer> cachePeer = new ManualRMICacheManagerPeerProvider(manager).lookupRemoteCachePeer(rmiCachePeer.getUrl());
+                if (cachePeer.isPresent()) {
+                    cachePeer.get().put(new Element("1", new Date()));
+                }
             } finally {
                 peerListener.dispose();
             }
@@ -175,8 +177,10 @@ public class RMICacheManagerPeerIT extends AbstractRMITest {
             peerListener.addCachePeer(cache.getName(), rmiCachePeer);
             peerListener.init();
 
-            CachePeer cachePeer = new ManualRMICacheManagerPeerProvider().lookupRemoteCachePeer(rmiCachePeer.getUrl());
-            cachePeer.send(Collections.singletonList(new RmiEventMessage(cache, new Element("1", new Date()))));
+            Optional<CachePeer> cachePeer = new ManualRMICacheManagerPeerProvider(manager).lookupRemoteCachePeer(rmiCachePeer.getUrl());
+            if (cachePeer.isPresent()) {
+                cachePeer.get().send(Collections.singletonList(new RmiEventMessage(cache, new Element("1", new Date()))));
+            }
         } finally {
             manager.shutdown();
         }

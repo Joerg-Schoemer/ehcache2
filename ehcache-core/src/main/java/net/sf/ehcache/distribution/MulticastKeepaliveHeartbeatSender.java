@@ -16,7 +16,6 @@
 
 package net.sf.ehcache.distribution;
 
-import net.sf.ehcache.CacheManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,24 +61,22 @@ public class MulticastKeepaliveHeartbeatSender {
     private final InetAddress groupMulticastAddress;
     private final Integer groupMulticastPort;
     private final Integer timeToLive;
-    private final MulticastServerThread serverThread = new MulticastServerThread();
-    private volatile boolean stopped;
-    private final CacheManager cacheManager;
+
     private final InetAddress hostAddress;
 
-    /**
-     * Constructor.
-     *
-     * @param cacheManager     the bound CacheManager. Each CacheManager has a maximum of one sender
-     * @param timeToLive       See class description for the meaning of this parameter.
-     */
+    private final MulticastServerThread serverThread = new MulticastServerThread();
+    private final AbstractRMICacheManagerPeerProvider peerProvider;
+
+    private volatile boolean stopped;
+
     public MulticastKeepaliveHeartbeatSender(
-            CacheManager cacheManager,
+            AbstractRMICacheManagerPeerProvider peerProvider,
             InetAddress multicastAddress,
             Integer multicastPort,
             Integer timeToLive,
-            InetAddress hostAddress) {
-        this.cacheManager = cacheManager;
+            InetAddress hostAddress
+    ) {
+        this.peerProvider = peerProvider;
         this.groupMulticastAddress = multicastAddress;
         this.groupMulticastPort = multicastPort;
         this.timeToLive = timeToLive;
@@ -109,7 +106,7 @@ public class MulticastKeepaliveHeartbeatSender {
     private class MulticastServerThread extends Thread {
 
         private MulticastSocket socket;
-        private List<byte[]> compressedUrlListList = new ArrayList<>();
+        private List<byte[]> compressedUrlsList = new ArrayList<>();
         private int cachePeersHash;
 
 
@@ -125,15 +122,11 @@ public class MulticastKeepaliveHeartbeatSender {
         public void run() {
             while (!stopped) {
                 try {
-                    socket = new MulticastSocket(groupMulticastPort);
-                    if (hostAddress != null) {
-                        socket.setInterface(hostAddress);
-                    }
-                    socket.setTimeToLive(timeToLive);
-                    socket.joinGroup(groupMulticastAddress);
+                    openSocket();
 
                     while (!stopped) {
                         for (byte[] buffer : createCachePeersPayload()) {
+                            LOG.trace("sending heartbeat on {}:{}", groupMulticastAddress, groupMulticastPort);
                             socket.send(new DatagramPacket(buffer, buffer.length, groupMulticastAddress, groupMulticastPort));
                         }
                         try {
@@ -163,6 +156,15 @@ public class MulticastKeepaliveHeartbeatSender {
             }
         }
 
+        void openSocket() throws IOException {
+            socket = new MulticastSocket(groupMulticastPort);
+            if (hostAddress != null) {
+                socket.setInterface(hostAddress);
+            }
+            socket.setTimeToLive(timeToLive);
+            socket.joinGroup(groupMulticastAddress);
+        }
+
         /**
          * Creates a gzipped payload.
          * <p>
@@ -173,7 +175,7 @@ public class MulticastKeepaliveHeartbeatSender {
          */
         private List<byte[]> createCachePeersPayload() {
 
-            CacheManagerPeerListener cacheManagerPeerListener = cacheManager.getCachePeerListener("RMI");
+            CacheManagerPeerListener cacheManagerPeerListener = peerProvider.getCachePeerListener();
             if (cacheManagerPeerListener == null) {
                 LOG.warn("The RMICacheManagerPeerListener is missing. You need to configure a cacheManagerPeerListenerFactory" +
                         " with class=\"net.sf.ehcache.distribution.RMICacheManagerPeerListenerFactory\" in ehcache.xml.");
@@ -183,45 +185,12 @@ public class MulticastKeepaliveHeartbeatSender {
             int newCachePeersHash = localCachePeers.hashCode();
             if (cachePeersHash != newCachePeersHash) {
                 cachePeersHash = newCachePeersHash;
-                compressedUrlListList = PayloadUtil.createCompressedPayloadList(localCachePeers, MAXIMUM_PEERS_PER_SEND);
+                compressedUrlsList = PayloadUtil.createCompressedPayloadList(localCachePeers, MAXIMUM_PEERS_PER_SEND);
             }
-            return compressedUrlListList;
+            return compressedUrlsList;
         }
 
 
-        /**
-         * Interrupts this thread.
-         * <p>
-         * <p> Unless the current thread is interrupting itself, which is
-         * always permitted, the {@link #checkAccess() checkAccess} method
-         * of this thread is invoked, which may cause a {@link
-         * SecurityException} to be thrown.
-         * <p>
-         * <p> If this thread is blocked in an invocation of the {@link
-         * Object#wait() wait()}, {@link Object#wait(long) wait(long)}, or {@link
-         * Object#wait(long, int) wait(long, int)} methods of the {@link Object}
-         * class, or of the {@link #join()}, {@link #join(long)}, {@link
-         * #join(long, int)}, {@link #sleep(long)}, or {@link #sleep(long, int)},
-         * methods of this class, then its interrupt status will be cleared and it
-         * will receive an {@link InterruptedException}.
-         * <p>
-         * <p> If this thread is blocked in an I/O operation upon an {@link
-         * java.nio.channels.InterruptibleChannel </code>interruptible
-         * channel<code>} then the channel will be closed, the thread's interrupt
-         * status will be set, and the thread will receive a {@link
-         * java.nio.channels.ClosedByInterruptException}.
-         * <p>
-         * <p> If this thread is blocked in a {@link java.nio.channels.Selector}
-         * then the thread's interrupt status will be set and it will return
-         * immediately from the selection operation, possibly with a non-zero
-         * value, just as if the selector's {@link
-         * java.nio.channels.Selector#wakeup wakeup} method were invoked.
-         * <p>
-         * <p> If none of the previous conditions hold then this thread's interrupt
-         * status will be set. </p>
-         *
-         * @throws SecurityException if the current thread cannot modify this thread
-         */
         @Override
         public void interrupt() {
             closeSocket();

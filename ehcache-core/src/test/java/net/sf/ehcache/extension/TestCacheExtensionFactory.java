@@ -32,7 +32,7 @@ public class TestCacheExtensionFactory extends CacheExtensionFactory {
      * @param properties implementation specific properties configured as delimiter separated name value pairs in ehcache.xml
      */
     public CacheExtension createCacheExtension(Ehcache cache, Properties properties) {
-        String propertyA = PropertyUtil.extractAndLogProperty("propertyA", properties);
+        String propertyA = PropertyUtil.extractString(properties, "propertyA");
         return new TestCacheExtension(cache, propertyA);
     }
 }

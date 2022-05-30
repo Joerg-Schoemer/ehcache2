@@ -17,8 +17,7 @@
 
 package net.sf.ehcache.distribution;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.sf.ehcache.CacheManager;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -35,33 +34,20 @@ import java.util.TreeSet;
  * @author Greg Luck
  * @version $Id$
  */
-public class ManualRMICacheManagerPeerProvider extends RMICacheManagerPeerProvider {
-
-    private static final Logger LOG = LoggerFactory.getLogger(ManualRMICacheManagerPeerProvider.class.getName());
+public class ManualRMICacheManagerPeerProvider extends AbstractRMICacheManagerPeerProvider {
 
     /**
      * Contains a RMI URLs of the form: "//" + hostName + ":" + port + "/" + cacheName;
      */
-    protected final Set<String> peerUrls = Collections.synchronizedSet(new HashSet<>());
+    final Set<String> peerUrls = Collections.synchronizedSet(new HashSet<>());
 
-    /**
-     * Empty constructor.
-     */
-    public ManualRMICacheManagerPeerProvider() {
-        super();
+    public ManualRMICacheManagerPeerProvider(CacheManager cacheManager) {
+        super(cacheManager);
     }
 
     @Override
     synchronized Set<String> getRegisteredRmiUrls() {
         return new TreeSet<>(peerUrls);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void init() {
-        //nothing to do here
     }
 
     /**
