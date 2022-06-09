@@ -1,17 +1,17 @@
 /**
- *  Copyright Terracotta, Inc.
- *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.config;
@@ -28,7 +28,6 @@ import net.sf.ehcache.store.Store;
 import net.sf.ehcache.transaction.manager.DefaultTransactionManagerLookup;
 import net.sf.ehcache.transaction.manager.TransactionManagerLookup;
 import net.sf.ehcache.util.PropertyUtil;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +51,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * @author <a href="mailto:gluck@thoughtworks.com">Greg Luck</a>
  * @version $Id$
  */
-public final class Configuration {
+public class Configuration {
 
     /**
      * Default value for dynamicConfig
@@ -61,19 +60,19 @@ public final class Configuration {
     /**
      * Default value for defaultTransactionTimeoutInSeconds
      */
-    public static final int  DEFAULT_TRANSACTION_TIMEOUT = 15;
+    public static final int DEFAULT_TRANSACTION_TIMEOUT = 15;
     /**
      * Default value for maxBytesLocalHeap when not explicitly set
      */
-    public static final long DEFAULT_MAX_BYTES_ON_HEAP   =  0;
+    public static final long DEFAULT_MAX_BYTES_ON_HEAP = 0;
     /**
      * Default value for maxBytesLocalOffHeap when not explicitly set
      */
-    public static final long DEFAULT_MAX_BYTES_OFF_HEAP  =  0;
+    public static final long DEFAULT_MAX_BYTES_OFF_HEAP = 0;
     /**
      * Default value for maxBytesLocalDisk when not explicitly set
      */
-    public static final long DEFAULT_MAX_BYTES_ON_DISK   =  0;
+    public static final long DEFAULT_MAX_BYTES_ON_DISK = 0;
     /**
      * Default value for monitoring
      */
@@ -86,12 +85,12 @@ public final class Configuration {
     /**
      * Default transactionManagerLookupConfiguration
      */
-    public static final FactoryConfiguration DEFAULT_TRANSACTION_MANAGER_LOOKUP_CONFIG = getDefaultTransactionManagerLookupConfiguration();
+    public static final FactoryConfiguration<?> DEFAULT_TRANSACTION_MANAGER_LOOKUP_CONFIG = getDefaultTransactionManagerLookupConfiguration();
     private static final int HUNDRED = 100;
     private static final Logger LOG = LoggerFactory.getLogger(Configuration.class);
 
     private volatile RuntimeCfg cfg;
-    private final List<PropertyChangeListener> propertyChangeListeners = new CopyOnWriteArrayList<PropertyChangeListener>();
+    private final List<PropertyChangeListener> propertyChangeListeners = new CopyOnWriteArrayList<>();
 
     /**
      * Represents whether monitoring should be enabled or not.
@@ -99,20 +98,26 @@ public final class Configuration {
      * @author amiller
      */
     public enum Monitoring {
-        /** When possible, notice the use of Terracotta and auto register the SampledCacheMBean. */
+        /**
+         * When possible, notice the use of Terracotta and auto register the SampledCacheMBean.
+         */
         AUTODETECT,
 
-        /** Always auto register the SampledCacheMBean */
+        /**
+         * Always auto register the SampledCacheMBean
+         */
         ON,
 
-        /** Never auto register the SampledCacheMBean */
-        OFF;
+        /**
+         * Never auto register the SampledCacheMBean
+         */
+        OFF
     }
 
     /**
      * Enum of all properties that can change once the Configuration is being used by a CacheManager
      */
-    private static enum DynamicProperty {
+    private enum DynamicProperty {
 
         defaultCacheConfiguration {
             @Override
@@ -124,7 +129,7 @@ public final class Configuration {
             @Override
             void applyChange(final PropertyChangeEvent evt, final RuntimeCfg config) {
 
-                Long newValue = (Long)evt.getNewValue();
+                Long newValue = (Long) evt.getNewValue();
                 Long oldValue = (Long) evt.getOldValue();
                 if (oldValue > newValue) {
                     // Double check for over-allocation again
@@ -152,23 +157,23 @@ public final class Configuration {
                 long diskAllocated = 0;
                 //Recalculating final free space available at global level
                 for (Cache cache : getAllActiveCaches(config.cacheManager)) {
-                  cache.getCacheConfiguration().configCachePools(config.getConfiguration());
-                  long bytesOnDiskPool = cache.getCacheConfiguration().getMaxBytesLocalDisk();
-                  diskAllocated += bytesOnDiskPool;
+                    cache.getCacheConfiguration().configCachePools(config.getConfiguration());
+                    long bytesOnDiskPool = cache.getCacheConfiguration().getMaxBytesLocalDisk();
+                    diskAllocated += bytesOnDiskPool;
                 }
                 config.cacheManager.getOnDiskPool().setMaxSize(newValue - diskAllocated);
             }
         };
 
 
-        private static void validateOverAllocation(RuntimeCfg config,  Long newValue) {
-            ArrayList<ConfigError> errors = new ArrayList<ConfigError>();
+        private static void validateOverAllocation(RuntimeCfg config, Long newValue) {
+            ArrayList<ConfigError> errors = new ArrayList<>();
 
             for (Cache cache : getAllActiveCaches(config.cacheManager)) {
                 CacheConfiguration cacheConfiguration = cache.getCacheConfiguration();
                 errors.addAll(cacheConfiguration.validateCachePools(config.getConfiguration()));
                 errors.addAll(cacheConfiguration.verifyPoolAllocationsBeforeAddingTo(config.cacheManager,
-                    newValue, config.getConfiguration().getMaxBytesLocalOffHeap(),
+                        newValue, config.getConfiguration().getMaxBytesLocalOffHeap(),
                         config.getConfiguration().getMaxBytesLocalDisk(), null));
             }
             if (!errors.isEmpty()) {
@@ -184,14 +189,14 @@ public final class Configuration {
     private Monitoring monitoring = DEFAULT_MONITORING;
     private DiskStoreConfiguration diskStoreConfiguration;
     private CacheConfiguration defaultCacheConfiguration;
-    private final List<FactoryConfiguration> cacheManagerPeerProviderFactoryConfiguration = new ArrayList<FactoryConfiguration>();
-    private final List<FactoryConfiguration> cacheManagerPeerListenerFactoryConfiguration = new ArrayList<FactoryConfiguration>();
+    private final List<FactoryConfiguration<?>> cacheManagerPeerProviderFactoryConfiguration = new ArrayList<>();
+    private final List<FactoryConfiguration<?>> cacheManagerPeerListenerFactoryConfiguration = new ArrayList<>();
     private SizeOfPolicyConfiguration sizeOfPolicyConfiguration;
-    private FactoryConfiguration transactionManagerLookupConfiguration;
-    private FactoryConfiguration cacheManagerEventListenerFactoryConfiguration;
+    private FactoryConfiguration<?> transactionManagerLookupConfiguration;
+    private FactoryConfiguration<?> cacheManagerEventListenerFactoryConfiguration;
     private TerracottaClientConfiguration terracottaConfigConfiguration;
     private ManagementRESTServiceConfiguration managementRESTService;
-    private final Map<String, CacheConfiguration> cacheConfigurations = new ConcurrentHashMap<String, CacheConfiguration>();
+    private final Map<String, CacheConfiguration> cacheConfigurations = new ConcurrentHashMap<>();
     private ConfigurationSource configurationSource;
     private boolean dynamicConfig = DEFAULT_DYNAMIC_CONFIG;
     private Long maxBytesLocalHeap;
@@ -205,18 +210,19 @@ public final class Configuration {
     /**
      * Empty constructor, which is used by {@link ConfigurationFactory}, and can be also used programmatically.
      * <p>
-     * If you are using it programmtically you need to call the relevant add and setter methods in this class to populate everything.
+     * If you are using it programmatically you need to call the relevant add and setter methods in this class to populate everything.
      */
     public Configuration() {
     }
 
     /**
      * Returns all active caches managed by the Manager
+     *
      * @param cacheManager The cacheManager
      * @return the Set of all active caches
      */
     static Set<Cache> getAllActiveCaches(CacheManager cacheManager) {
-        final Set<Cache> caches = new HashSet<Cache>();
+        final Set<Cache> caches = new HashSet<>();
         for (String cacheName : cacheManager.getCacheNames()) {
             final Cache cache = cacheManager.getCache(cacheName);
             if (cache != null) {
@@ -250,10 +256,11 @@ public final class Configuration {
 
     /**
      * Validates the current configuration
+     *
      * @return the list of errors withing that configuration
      */
     public Collection<ConfigError> validate() {
-        final Collection<ConfigError> errors = new ArrayList<ConfigError>();
+        final Collection<ConfigError> errors = new ArrayList<>();
 
         for (CacheConfiguration cacheConfiguration : cacheConfigurations.values()) {
             errors.addAll(cacheConfiguration.validate(this));
@@ -263,6 +270,7 @@ public final class Configuration {
 
     /**
      * Checks whether the user explicitly set the maxBytesOnDisk
+     *
      * @return true if set by user, false otherwise
      * @see #setMaxBytesLocalDisk(Long)
      */
@@ -272,6 +280,7 @@ public final class Configuration {
 
     /**
      * Checks whether the user explicitly set the maxBytesOffHeat
+     *
      * @return true if set by user, false otherwise
      * @see #setMaxBytesLocalOffHeap(Long)
      */
@@ -281,6 +290,7 @@ public final class Configuration {
 
     /**
      * Checks whether the user explicitly set the maxBytesOnHeap
+     *
      * @return true if set by user, false otherwise
      * @see #setMaxBytesLocalHeap(Long)
      */
@@ -289,8 +299,8 @@ public final class Configuration {
     }
 
 
-    private static FactoryConfiguration getDefaultTransactionManagerLookupConfiguration() {
-        FactoryConfiguration configuration = new FactoryConfiguration();
+    private static FactoryConfiguration<?> getDefaultTransactionManagerLookupConfiguration() {
+        FactoryConfiguration<?> configuration = new FactoryConfiguration<>();
         configuration.setClass(DefaultTransactionManagerLookup.class.getName());
         return configuration;
     }
@@ -305,12 +315,11 @@ public final class Configuration {
      * </ul>
      * Note that a clustered cache manager is by default registered as MBean.
      *
-     * @see #setName(String)
-     * @param name
-     *            the name to set
+     * @param name the name to set
      * @return this configuration instance
+     * @see #setName(String)
      */
-    public final Configuration name(String name) {
+    public Configuration name(String name) {
         setName(name);
         return this;
     }
@@ -325,7 +334,7 @@ public final class Configuration {
      * </ul>
      * Note that a clustered cache manager is by default registered as MBean.
      */
-    public final void setName(String name) {
+    public void setName(String name) {
         assertArgumentNotNull("name", name);
         final String prop = "cacheManagerName";
         final boolean publishChange = checkDynChange(prop);
@@ -345,35 +354,15 @@ public final class Configuration {
     /**
      * CacheManager name
      */
-    public final String getName() {
+    public String getName() {
         return this.cacheManagerName;
-    }
-
-    /**
-     * Builder to set the state of the automated update check.
-     *
-     * @param updateCheck
-     *            {@code true} if the update check should be turned on; or {@code false} otherwise
-     * @return this configuration instance
-     */
-    @Deprecated
-    public final Configuration updateCheck(boolean updateCheck) {
-        return this;
-    }
-
-    /**
-     * Allows BeanHandler to set the updateCheck flag.
-     */
-    @Deprecated
-    public final void setUpdateCheck(boolean updateCheck) {
-    //  no-op
     }
 
     /**
      * Get flag for updateCheck
      */
     @Deprecated
-    public final boolean getUpdateCheck() {
+    public boolean getUpdateCheck() {
         return false;
     }
 
@@ -383,7 +372,7 @@ public final class Configuration {
      * @param defaultTransactionTimeoutInSeconds the default transaction timeout in seconds
      * @return this configuration instance
      */
-    public final Configuration defaultTransactionTimeoutInSeconds(int defaultTransactionTimeoutInSeconds) {
+    public Configuration defaultTransactionTimeoutInSeconds(int defaultTransactionTimeoutInSeconds) {
         setDefaultTransactionTimeoutInSeconds(defaultTransactionTimeoutInSeconds);
         return this;
     }
@@ -391,7 +380,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to set the default transaction timeout.
      */
-    public final void setDefaultTransactionTimeoutInSeconds(int defaultTransactionTimeoutInSeconds) {
+    public void setDefaultTransactionTimeoutInSeconds(int defaultTransactionTimeoutInSeconds) {
         final String prop = "defaultTransactionTimeoutInSeconds";
         final boolean publish = checkDynChange(prop);
         final int oldValue = this.defaultTransactionTimeoutInSeconds;
@@ -403,20 +392,20 @@ public final class Configuration {
 
     /**
      * Get default transaction timeout
+     *
      * @return default transaction timeout in seconds
      */
-    public final int getDefaultTransactionTimeoutInSeconds() {
+    public int getDefaultTransactionTimeoutInSeconds() {
         return defaultTransactionTimeoutInSeconds;
     }
 
     /**
      * Builder to set the monitoring approach
      *
-     * @param monitoring
-     *            an non-null instance of {@link Monitoring}
+     * @param monitoring a non-null instance of {@link Monitoring}
      * @return this configuration instance
      */
-    public final Configuration monitoring(Monitoring monitoring) {
+    public Configuration monitoring(Monitoring monitoring) {
         if (null == monitoring) {
             throw new IllegalArgumentException("Monitoring value must be non-null");
         }
@@ -433,7 +422,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to set the monitoring flag
      */
-    public final void setMonitoring(String monitoring) {
+    public void setMonitoring(String monitoring) {
         assertArgumentNotNull("Monitoring", monitoring);
         monitoring(Monitoring.valueOf(Monitoring.class, monitoring.toUpperCase()));
     }
@@ -441,18 +430,17 @@ public final class Configuration {
     /**
      * Get monitoring type, should not be null
      */
-    public final Monitoring getMonitoring() {
+    public Monitoring getMonitoring() {
         return this.monitoring;
     }
 
     /**
      * Builder to set the dynamic config capability
      *
-     * @param dynamicConfig
-     *            {@code true} if dynamic config should be enabled; or {@code false} otherwise.
+     * @param dynamicConfig {@code true} if dynamic config should be enabled; or {@code false} otherwise.
      * @return this configuration instance
      */
-    public final Configuration dynamicConfig(boolean dynamicConfig) {
+    public Configuration dynamicConfig(boolean dynamicConfig) {
         setDynamicConfig(dynamicConfig);
         return this;
     }
@@ -460,7 +448,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to set the dynamic configuration flag
      */
-    public final void setDynamicConfig(boolean dynamicConfig) {
+    public void setDynamicConfig(boolean dynamicConfig) {
         final String prop = "dynamicConfig";
         final boolean publish = checkDynChange(prop);
         final boolean oldValue = this.dynamicConfig;
@@ -473,12 +461,13 @@ public final class Configuration {
     /**
      * Get flag for dynamicConfig
      */
-    public final boolean getDynamicConfig() {
+    public boolean getDynamicConfig() {
         return this.dynamicConfig;
     }
 
     /**
      * Maximum amount of bytes the CacheManager will use on the heap
+     *
      * @return amount of bytes, 0 is unbound
      */
     public long getMaxBytesLocalHeap() {
@@ -487,12 +476,13 @@ public final class Configuration {
 
     /**
      * Sets maximum amount of bytes the CacheManager will use on the Disk Tier.
+     *
      * @param maxBytesOnHeap String representation of the size.
      * @see MemoryUnit#parseSizeInBytes(String)
      */
     public void setMaxBytesLocalHeap(final String maxBytesOnHeap) {
         assertArgumentNotNull("MaxBytesLocalHeap", maxBytesOnHeap);
-        
+
         final String origInput = maxBytesLocalHeapInput;
         try {
             maxBytesLocalHeapInput = maxBytesOnHeap;
@@ -532,6 +522,7 @@ public final class Configuration {
 
     /**
      * Sets the maximum amount of bytes the cache manager being configured will use on the OnHeap tier
+     *
      * @param maxBytesOnHeap amount of bytes
      */
     public void setMaxBytesLocalHeap(final Long maxBytesOnHeap) {
@@ -547,7 +538,8 @@ public final class Configuration {
 
     /**
      * Sets the maxOnHeap size for the cache being configured
-     * @param amount the amount of unit
+     *
+     * @param amount     the amount of unit
      * @param memoryUnit the actual unit
      * @return this
      * @see #setMaxBytesLocalHeap(Long)
@@ -559,6 +551,7 @@ public final class Configuration {
 
     /**
      * Maximum amount of bytes the CacheManager will use on the OffHeap Tier.
+     *
      * @return amount in bytes
      */
     public long getMaxBytesLocalOffHeap() {
@@ -567,12 +560,13 @@ public final class Configuration {
 
     /**
      * Sets maximum amount of bytes the CacheManager will use on the OffHeap Tier.
+     *
      * @param maxBytesOffHeap String representation of the size.
      * @see MemoryUnit#parseSizeInBytes(String)
      */
     public void setMaxBytesLocalOffHeap(final String maxBytesOffHeap) {
         assertArgumentNotNull("MaxBytesLocalOffHeap", maxBytesOffHeap);
-        
+
         final String origInput = maxBytesLocalOffHeapInput;
         try {
             maxBytesLocalOffHeapInput = maxBytesOffHeap;
@@ -597,7 +591,7 @@ public final class Configuration {
     }
 
     /**
-     * @return Total amount offheap configured by current caches
+     * @return Total amount off heap configured by current caches
      */
     public long getTotalConfiguredOffheap() {
         long total = getMaxBytesLocalOffHeap();
@@ -613,28 +607,29 @@ public final class Configuration {
             Class<Store> enterpriseFmClass = (Class<Store>) Class.forName(FeaturesManager.ENTERPRISE_FM_CLASSNAME);
 
             try {
-                return (Long)enterpriseFmClass.getMethod("getMaxBytesAllocatable").invoke(null);
+                return (Long) enterpriseFmClass.getMethod("getMaxBytesAllocatable").invoke(null);
             } catch (NoSuchMethodException e) {
                 throw new CacheException("Cache: " + getName() + " cannot find static factory"
-                                         + " method create(Ehcache, String)" + " in store class " + FeaturesManager.ENTERPRISE_FM_CLASSNAME, e);
+                        + " method create(Ehcache, String)" + " in store class " + FeaturesManager.ENTERPRISE_FM_CLASSNAME, e);
             } catch (InvocationTargetException e) {
                 Throwable cause = e.getCause();
                 throw new CacheException("Cache: " + getName() + " cannot instantiate store "
-                                         + FeaturesManager.ENTERPRISE_FM_CLASSNAME, cause);
+                        + FeaturesManager.ENTERPRISE_FM_CLASSNAME, cause);
             } catch (IllegalAccessException e) {
                 throw new CacheException("Cache: " + getName() + " cannot instantiate store "
-                                         + FeaturesManager.ENTERPRISE_FM_CLASSNAME, e);
+                        + FeaturesManager.ENTERPRISE_FM_CLASSNAME, e);
             }
         } catch (ClassNotFoundException e) {
             throw new CacheException("Cache " + getName()
-                                     + " cannot be configured because the off-heap store class could not be found. "
-                                     + "You must use an enterprise version of Ehcache to successfully enable overflowToOffHeap.");
+                    + " cannot be configured because the off-heap store class could not be found. "
+                    + "You must use an enterprise version of Ehcache to successfully enable overflowToOffHeap.");
         }
     }
 
     /**
      * Sets maximum amount of bytes the CacheManager will use on the OffHeap Tier.
-     * @param maxBytesOffHeap max bytes on disk in bytes. Needs be be greater than 0
+     *
+     * @param maxBytesOffHeap max bytes on disk in bytes. Needs to be greater than 0
      */
     public void setMaxBytesLocalOffHeap(final Long maxBytesOffHeap) {
         String prop = "maxBytesLocalOffHeap";
@@ -649,7 +644,8 @@ public final class Configuration {
 
     /**
      * Sets the maximum size for the OffHeap tier for all the caches this CacheManagers holds.
-     * @param amount the amount of unit
+     *
+     * @param amount     the amount of unit
      * @param memoryUnit the actual unit
      * @return this
      */
@@ -660,6 +656,7 @@ public final class Configuration {
 
     /**
      * Maximum amount of bytes the CacheManager will use on the Disk Tier.
+     *
      * @return amount in bytes
      */
     public long getMaxBytesLocalDisk() {
@@ -668,12 +665,13 @@ public final class Configuration {
 
     /**
      * Sets maximum amount of bytes the CacheManager will use on the Disk Tier.
+     *
      * @param maxBytesOnDisk String representation of the size.
      * @see MemoryUnit#parseSizeInBytes(String)
      */
     public void setMaxBytesLocalDisk(final String maxBytesOnDisk) {
         assertArgumentNotNull("MaxBytesLocalDisk", maxBytesOnDisk);
-        
+
         final String origInput = maxBytesLocalDiskInput;
         try {
             maxBytesLocalDiskInput = maxBytesOnDisk;
@@ -693,7 +691,8 @@ public final class Configuration {
 
     /**
      * Sets maximum amount of bytes the CacheManager will use on the Disk Tier.
-     * @param maxBytesOnDisk max bytes on disk in bytes. Needs be be greater than 0
+     *
+     * @param maxBytesOnDisk max bytes on disk in bytes. Needs to be greater than 0
      */
     public void setMaxBytesLocalDisk(final Long maxBytesOnDisk) {
         String prop = "maxBytesLocalDisk";
@@ -708,7 +707,8 @@ public final class Configuration {
 
     /**
      * Sets the maxOnDisk size
-     * @param amount the amount of unit
+     *
+     * @param amount     the amount of unit
      * @param memoryUnit the actual unit
      * @return this
      * @see #setMaxBytesLocalDisk(Long)
@@ -727,13 +727,11 @@ public final class Configuration {
     /**
      * Builder to add a disk store to the cache manager, only one disk store can be added.
      *
-     * @param diskStoreConfigurationParameter
-     *            the disk store configuration to use
+     * @param diskStoreConfigurationParameter the disk store configuration to use
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if the disk store has already been configured
+     * @throws ObjectExistsException if the disk store has already been configured
      */
-    public final Configuration diskStore(DiskStoreConfiguration diskStoreConfigurationParameter) throws ObjectExistsException {
+    public Configuration diskStore(DiskStoreConfiguration diskStoreConfigurationParameter) throws ObjectExistsException {
         addDiskStore(diskStoreConfigurationParameter);
         return this;
     }
@@ -741,7 +739,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add disk store location to the configuration.
      */
-    public final void addDiskStore(DiskStoreConfiguration diskStoreConfigurationParameter) throws ObjectExistsException {
+    public void addDiskStore(DiskStoreConfiguration diskStoreConfigurationParameter) throws ObjectExistsException {
         if (diskStoreConfiguration != null) {
             throw new ObjectExistsException("The Disk Store has already been configured");
         }
@@ -760,7 +758,7 @@ public final class Configuration {
      * @param sizeOfPolicyConfiguration the SizeOfPolicy Configuration
      * @return this configuration instance
      */
-    public final Configuration sizeOfPolicy(SizeOfPolicyConfiguration sizeOfPolicyConfiguration) {
+    public Configuration sizeOfPolicy(SizeOfPolicyConfiguration sizeOfPolicyConfiguration) {
         addSizeOfPolicy(sizeOfPolicyConfiguration);
         return this;
     }
@@ -770,7 +768,7 @@ public final class Configuration {
      *
      * @param sizeOfPolicy the SizeOfPolicy Configuration
      */
-    public final void addSizeOfPolicy(SizeOfPolicyConfiguration sizeOfPolicy) {
+    public void addSizeOfPolicy(SizeOfPolicyConfiguration sizeOfPolicy) {
         if (sizeOfPolicyConfiguration != null) {
             throw new ObjectExistsException("The SizeOfPolicy class has already been configured");
         }
@@ -780,13 +778,11 @@ public final class Configuration {
     /**
      * Builder to add a transaction manager lookup class to the cache manager, only one of these can be added.
      *
-     * @param transactionManagerLookupParameter
-     *            the transaction manager lookup class to use
+     * @param transactionManagerLookupParameter the transaction manager lookup class to use
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if the transaction manager lookup has already been configured
+     * @throws ObjectExistsException if the transaction manager lookup has already been configured
      */
-    public final Configuration transactionManagerLookup(FactoryConfiguration transactionManagerLookupParameter)
+    public Configuration transactionManagerLookup(FactoryConfiguration<?> transactionManagerLookupParameter)
             throws ObjectExistsException {
         addTransactionManagerLookup(transactionManagerLookupParameter);
         return this;
@@ -795,13 +791,13 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add transaction manager lookup to the configuration.
      */
-    public final void addTransactionManagerLookup(FactoryConfiguration transactionManagerLookupParameter) throws ObjectExistsException {
+    public void addTransactionManagerLookup(FactoryConfiguration<?> transactionManagerLookupParameter) throws ObjectExistsException {
         if (transactionManagerLookupConfiguration != null) {
             throw new ObjectExistsException("The TransactionManagerLookup class has already been configured");
         }
         final String prop = "transactionManagerLookupConfiguration";
         boolean publish = checkDynChange(prop);
-        FactoryConfiguration oldValue = this.transactionManagerLookupConfiguration;
+        FactoryConfiguration<?> oldValue = this.transactionManagerLookupConfiguration;
         transactionManagerLookupConfiguration = transactionManagerLookupParameter;
         if (publish) {
             firePropertyChange(prop, oldValue, transactionManagerLookupParameter);
@@ -813,7 +809,7 @@ public final class Configuration {
      *
      * @return this configuration instance
      */
-    public final Configuration cacheManagerEventListenerFactory(FactoryConfiguration cacheManagerEventListenerFactoryConfiguration) {
+    public Configuration cacheManagerEventListenerFactory(FactoryConfiguration<?> cacheManagerEventListenerFactoryConfiguration) {
         addCacheManagerEventListenerFactory(cacheManagerEventListenerFactoryConfiguration);
         return this;
     }
@@ -821,7 +817,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add the CacheManagerEventListener to the configuration.
      */
-    public final void addCacheManagerEventListenerFactory(FactoryConfiguration cacheManagerEventListenerFactoryConfiguration) {
+    public void addCacheManagerEventListenerFactory(FactoryConfiguration<?> cacheManagerEventListenerFactoryConfiguration) {
         final String prop = "cacheManagerEventListenerFactoryConfiguration";
         boolean publish = checkDynChange(prop);
         if (this.cacheManagerEventListenerFactoryConfiguration == null) {
@@ -837,7 +833,7 @@ public final class Configuration {
      *
      * @return this configuration instance
      */
-    public final Configuration cacheManagerPeerProviderFactory(FactoryConfiguration factory) {
+    public Configuration cacheManagerPeerProviderFactory(FactoryConfiguration<?> factory) {
         addCacheManagerPeerProviderFactory(factory);
         return this;
     }
@@ -845,12 +841,12 @@ public final class Configuration {
     /**
      * Adds a CacheManagerPeerProvider through FactoryConfiguration.
      */
-    public final void addCacheManagerPeerProviderFactory(FactoryConfiguration factory) {
+    public void addCacheManagerPeerProviderFactory(FactoryConfiguration<?> factory) {
         final String prop = "cacheManagerPeerProviderFactoryConfiguration";
         boolean publish = checkDynChange(prop);
-        List<FactoryConfiguration> oldValue = null;
+        List<FactoryConfiguration<?>> oldValue = null;
         if (publish) {
-            oldValue = new ArrayList<FactoryConfiguration>(cacheManagerPeerProviderFactoryConfiguration);
+            oldValue = new ArrayList<>(cacheManagerPeerProviderFactoryConfiguration);
         }
         cacheManagerPeerProviderFactoryConfiguration.add(factory);
         if (publish) {
@@ -863,7 +859,7 @@ public final class Configuration {
      *
      * @return this configuration instance
      */
-    public final Configuration cacheManagerPeerListenerFactory(FactoryConfiguration factory) {
+    public Configuration cacheManagerPeerListenerFactory(FactoryConfiguration<?> factory) {
         addCacheManagerPeerListenerFactory(factory);
         return this;
     }
@@ -871,12 +867,12 @@ public final class Configuration {
     /**
      * Adds a CacheManagerPeerListener through FactoryConfiguration.
      */
-    public final void addCacheManagerPeerListenerFactory(FactoryConfiguration factory) {
+    public void addCacheManagerPeerListenerFactory(FactoryConfiguration<?> factory) {
         final String prop = "cacheManagerPeerListenerFactoryConfiguration";
         boolean publish = checkDynChange(prop);
-        List<FactoryConfiguration> oldValue = null;
+        List<FactoryConfiguration<?>> oldValue = null;
         if (publish) {
-            oldValue = new ArrayList<FactoryConfiguration>(cacheManagerPeerListenerFactoryConfiguration);
+            oldValue = new ArrayList<>(cacheManagerPeerListenerFactoryConfiguration);
         }
         cacheManagerPeerListenerFactoryConfiguration.add(factory);
         if (publish) {
@@ -888,10 +884,9 @@ public final class Configuration {
      * Builder method to Terracotta capabilities to the cache manager through a dedicated configuration, this can only be used once.
      *
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if the Terracotta config has already been configured
+     * @throws ObjectExistsException if the Terracotta config has already been configured
      */
-    public final Configuration terracotta(TerracottaClientConfiguration terracottaConfiguration) throws ObjectExistsException {
+    public Configuration terracotta(TerracottaClientConfiguration terracottaConfiguration) throws ObjectExistsException {
         addTerracottaConfig(terracottaConfiguration);
         return this;
     }
@@ -899,7 +894,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add a Terracotta configuration to the configuration
      */
-    public final void addTerracottaConfig(TerracottaClientConfiguration terracottaConfiguration) throws ObjectExistsException {
+    public void addTerracottaConfig(TerracottaClientConfiguration terracottaConfiguration) throws ObjectExistsException {
         if (this.terracottaConfigConfiguration != null && terracottaConfiguration != null) {
             throw new ObjectExistsException("The TerracottaConfig has already been configured");
         }
@@ -916,10 +911,9 @@ public final class Configuration {
      * Builder method to REST management capabilities to the cache manager through a dedicated configuration, this can only be used once.
      *
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if the REST management config has already been configured
+     * @throws ObjectExistsException if the REST management config has already been configured
      */
-    public final Configuration managementRESTService(ManagementRESTServiceConfiguration cfg) throws ObjectExistsException {
+    public Configuration managementRESTService(ManagementRESTServiceConfiguration cfg) throws ObjectExistsException {
         addManagementRESTService(cfg);
         return this;
     }
@@ -927,7 +921,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add a ManagementRESTService configuration to the configuration
      */
-    public final void addManagementRESTService(ManagementRESTServiceConfiguration managementRESTServiceConfiguration) throws ObjectExistsException {
+    public void addManagementRESTService(ManagementRESTServiceConfiguration managementRESTServiceConfiguration) throws ObjectExistsException {
         if (this.managementRESTService != null) {
             throw new ObjectExistsException("The ManagementRESTService has already been configured");
         }
@@ -945,10 +939,9 @@ public final class Configuration {
      * Builder method to set the default cache configuration, this can only be used once.
      *
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if the default cache config has already been configured
+     * @throws ObjectExistsException if the default cache config has already been configured
      */
-    public final Configuration defaultCache(CacheConfiguration defaultCacheConfiguration) throws ObjectExistsException {
+    public Configuration defaultCache(CacheConfiguration defaultCacheConfiguration) throws ObjectExistsException {
         setDefaultCacheConfiguration(defaultCacheConfiguration);
         return this;
     }
@@ -956,7 +949,7 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add a default configuration to the configuration.
      */
-    public final void addDefaultCache(CacheConfiguration defaultCacheConfiguration) throws ObjectExistsException {
+    public void addDefaultCache(CacheConfiguration defaultCacheConfiguration) throws ObjectExistsException {
         if (this.defaultCacheConfiguration != null) {
             throw new ObjectExistsException("The Default Cache has already been configured");
         }
@@ -967,10 +960,9 @@ public final class Configuration {
      * Builder to add a new cache through its config
      *
      * @return this configuration instance
-     * @throws ObjectExistsException
-     *             if a cache with the same name already exists, or if the name conflicts with the name of the default cache
+     * @throws ObjectExistsException if a cache with the same name already exists, or if the name conflicts with the name of the default cache
      */
-    public final Configuration cache(CacheConfiguration cacheConfiguration) throws ObjectExistsException {
+    public Configuration cache(CacheConfiguration cacheConfiguration) throws ObjectExistsException {
         addCache(cacheConfiguration);
         return this;
     }
@@ -978,21 +970,22 @@ public final class Configuration {
     /**
      * Allows BeanHandler to add Cache Configurations to the configuration.
      */
-    public final void addCache(CacheConfiguration cacheConfiguration) throws ObjectExistsException {
+    public void addCache(CacheConfiguration cacheConfiguration) throws ObjectExistsException {
         addCache(cacheConfiguration, true);
     }
 
     /**
      * Maintains the known Cache's configuration map in this Configuration
+     *
      * @param cacheConfiguration the CacheConfiguration
-     * @param strict true if added regularly, validation dyn config constraints, false if added through the cache being added
+     * @param strict             true if added regularly, validation dyn config constraints, false if added through the cache being added
      */
     void addCache(CacheConfiguration cacheConfiguration, final boolean strict) throws ObjectExistsException {
         final String prop = "cacheConfigurations";
         Object oldValue = null;
         boolean publishChange = strict && checkDynChange(prop);
         if (publishChange) {
-            oldValue = new HashMap<String, CacheConfiguration>(cacheConfigurations);
+            oldValue = new HashMap<>(cacheConfigurations);
         }
         if (cacheConfigurations.get(cacheConfiguration.name) != null) {
             throw new ObjectExistsException("Cannot create cache: " + cacheConfiguration.name + " with the same name as an existing one.");
@@ -1025,21 +1018,18 @@ public final class Configuration {
     /**
      * Gets a Map of cacheConfigurations.
      */
-    public final Set<String> getCacheConfigurationsKeySet() {
+    public Set<String> getCacheConfigurationsKeySet() {
         return cacheConfigurations.keySet();
     }
 
     /**
      * @return the configuration's default cache configuration
      */
-    public final CacheConfiguration getDefaultCacheConfiguration() {
+    public CacheConfiguration getDefaultCacheConfiguration() {
         return defaultCacheConfiguration;
     }
 
-    /**
-     * @param defaultCacheConfiguration
-     */
-    public final void setDefaultCacheConfiguration(CacheConfiguration defaultCacheConfiguration) {
+    public void setDefaultCacheConfiguration(CacheConfiguration defaultCacheConfiguration) {
         final String prop = "defaultCacheConfiguration";
         final boolean publish = checkDynChange(prop);
         final CacheConfiguration oldValue = this.defaultCacheConfiguration;
@@ -1052,14 +1042,14 @@ public final class Configuration {
     /**
      * Gets the disk store configuration.
      */
-    public final DiskStoreConfiguration getDiskStoreConfiguration() {
+    public DiskStoreConfiguration getDiskStoreConfiguration() {
         return diskStoreConfiguration;
     }
 
     /**
      * Gets the SizeOf policy configuration.
      */
-    public final SizeOfPolicyConfiguration getSizeOfPolicyConfiguration() {
+    public SizeOfPolicyConfiguration getSizeOfPolicyConfiguration() {
         if (sizeOfPolicyConfiguration == null) {
             return DEFAULT_SIZEOF_POLICY_CONFIGURATION;
         }
@@ -1069,7 +1059,7 @@ public final class Configuration {
     /**
      * Gets the transaction manager lookup configuration.
      */
-    public final FactoryConfiguration getTransactionManagerLookupConfiguration() {
+    public FactoryConfiguration<?> getTransactionManagerLookupConfiguration() {
         if (transactionManagerLookupConfiguration == null) {
             return getDefaultTransactionManagerLookupConfiguration();
         }
@@ -1079,42 +1069,42 @@ public final class Configuration {
     /**
      * Gets the CacheManagerPeerProvider factory configuration.
      */
-    public final List<FactoryConfiguration> getCacheManagerPeerProviderFactoryConfiguration() {
+    public List<FactoryConfiguration<?>> getCacheManagerPeerProviderFactoryConfiguration() {
         return cacheManagerPeerProviderFactoryConfiguration;
     }
 
     /**
      * Gets the CacheManagerPeerListener factory configuration.
      */
-    public final List<FactoryConfiguration> getCacheManagerPeerListenerFactoryConfigurations() {
+    public List<FactoryConfiguration<?>> getCacheManagerPeerListenerFactoryConfigurations() {
         return cacheManagerPeerListenerFactoryConfiguration;
     }
 
     /**
      * Gets the ManagementRESTServiceConfiguration
      */
-    public final ManagementRESTServiceConfiguration getManagementRESTService() {
+    public ManagementRESTServiceConfiguration getManagementRESTService() {
         return managementRESTService;
     }
 
     /**
      * Gets the CacheManagerEventListener factory configuration.
      */
-    public final FactoryConfiguration getCacheManagerEventListenerFactoryConfiguration() {
+    public FactoryConfiguration<?> getCacheManagerEventListenerFactoryConfiguration() {
         return cacheManagerEventListenerFactoryConfiguration;
     }
 
     /**
      * Gets the TerracottaClientConfiguration
      */
-    public final TerracottaClientConfiguration getTerracottaConfiguration() {
+    public TerracottaClientConfiguration getTerracottaConfiguration() {
         return this.terracottaConfigConfiguration;
     }
 
     /**
      * Gets a Map of cache configurations, keyed by name.
      */
-    public final Map<String, CacheConfiguration> getCacheConfigurations() {
+    public Map<String, CacheConfiguration> getCacheConfigurations() {
         return cacheConfigurations;
     }
 
@@ -1123,7 +1113,7 @@ public final class Configuration {
      *
      * @return this configuration instance
      */
-    public final Configuration source(ConfigurationSource configurationSource) {
+    public Configuration source(ConfigurationSource configurationSource) {
         setSource(configurationSource);
         return this;
     }
@@ -1131,11 +1121,10 @@ public final class Configuration {
     /**
      * Sets the configuration source.
      *
-     * @param configurationSource
-     *            an informative description of the source, preferably
-     *            including the resource name and location.
+     * @param configurationSource an informative description of the source, preferably
+     *                            including the resource name and location.
      */
-    public final void setSource(ConfigurationSource configurationSource) {
+    public void setSource(ConfigurationSource configurationSource) {
         final String prop = "configurationSource";
         final boolean publish = checkDynChange(prop);
         final ConfigurationSource oldValue = this.configurationSource;
@@ -1148,12 +1137,13 @@ public final class Configuration {
     /**
      * Gets a description of the source from which this configuration was created.
      */
-    public final ConfigurationSource getConfigurationSource() {
+    public ConfigurationSource getConfigurationSource() {
         return configurationSource;
     }
 
     /**
      * Adds a {@link PropertyChangeListener} for this configuration
+     *
      * @param listener the listener instance
      * @return true if added, false otherwise
      */
@@ -1163,6 +1153,7 @@ public final class Configuration {
 
     /**
      * Removes a {@link PropertyChangeListener} for this configuration
+     *
      * @param listener the listener to be removed
      * @return true if removed, false otherwise
      */
@@ -1184,13 +1175,13 @@ public final class Configuration {
     public class RuntimeCfg implements PropertyChangeListener {
 
         private final CacheManager cacheManager;
-        private volatile String cacheManagerName;
+        private final String cacheManagerName;
         private final boolean named;
         private TransactionManagerLookup transactionManagerLookup;
-        private boolean allowsSizeBasedTunings;
 
         /**
          * Constructor
+         *
          * @param cacheManager the cacheManager instance using this config
          * @param fallbackName the fallbackName in case the configuration doesn't declare an explicit name
          */
@@ -1205,18 +1196,18 @@ public final class Configuration {
                 this.cacheManagerName = fallbackName;
                 named = false;
             }
-            FactoryConfiguration lookupConfiguration = getTransactionManagerLookupConfiguration();
+            FactoryConfiguration<?> lookupConfiguration = getTransactionManagerLookupConfiguration();
             try {
                 Properties properties = PropertyUtil.parseProperties(lookupConfiguration.getProperties(),
                         lookupConfiguration.getPropertySeparator());
-                
-                ClassLoader loader = getClassLoader(); 
-                
+
+                ClassLoader loader = getClassLoader();
+
                 // when loading the default impl use the same loader as ehcache itself
-                if (DEFAULT_TRANSACTION_MANAGER_LOOKUP_CONFIG.getFullyQualifiedClassPath().equals(lookupConfiguration.getFullyQualifiedClassPath())) {                                                                      
+                if (DEFAULT_TRANSACTION_MANAGER_LOOKUP_CONFIG.getFullyQualifiedClassPath().equals(lookupConfiguration.getFullyQualifiedClassPath())) {
                     loader = getClass().getClassLoader();
-                }                
-                
+                }
+
                 Class<? extends TransactionManagerLookup> transactionManagerLookupClass = (Class<? extends TransactionManagerLookup>) loader
                         .loadClass(lookupConfiguration.getFullyQualifiedClassPath());
                 this.transactionManagerLookup = transactionManagerLookupClass.newInstance();
@@ -1226,10 +1217,8 @@ public final class Configuration {
             }
             this.cacheManager = cacheManager;
             propertyChangeListeners.add(this);
-            allowsSizeBasedTunings = defaultCacheConfiguration == null || !defaultCacheConfiguration.isCountBasedTuned();
             for (CacheConfiguration cacheConfiguration : cacheConfigurations.values()) {
                 if (cacheConfiguration.isCountBasedTuned()) {
-                    allowsSizeBasedTunings = false;
                     break;
                 }
             }
@@ -1294,22 +1283,24 @@ public final class Configuration {
 
         /**
          * Removes a cache from the known list
+         *
          * @param cacheConfiguration the cacheConfiguration to be removed
          */
         public void removeCache(final CacheConfiguration cacheConfiguration) {
             if (cacheManager.getOnHeapPool() != null) {
                 cacheManager.getOnHeapPool().setMaxSize(cacheManager.getOnHeapPool()
-                                                            .getMaxSize() + cacheConfiguration.getMaxBytesLocalHeap());
+                        .getMaxSize() + cacheConfiguration.getMaxBytesLocalHeap());
             }
             if (cacheManager.getOnDiskPool() != null) {
                 cacheManager.getOnDiskPool().setMaxSize(cacheManager.getOnDiskPool()
-                                                            .getMaxSize() + cacheConfiguration.getMaxBytesLocalDisk());
+                        .getMaxSize() + cacheConfiguration.getMaxBytesLocalDisk());
             }
             getConfiguration().getCacheConfigurations().remove(cacheConfiguration.getName());
         }
 
         /**
          * Handles changes to the Configuration this RuntimeCfg backs
+         *
          * @param evt the PropertyChangeEvent
          */
         public void propertyChange(final PropertyChangeEvent evt) {
@@ -1322,6 +1313,7 @@ public final class Configuration {
 
         /**
          * Checks whether the CacheManager uses a OffHeapPool
+         *
          * @return true if using one, false otherwise
          */
         public boolean hasOffHeapPool() {
@@ -1334,10 +1326,10 @@ public final class Configuration {
     }
 
     /**
-     * Set the classloader for the cache manager (and it's associated caches) to use when creating application objects (eg. cache values,
+     * Set the classloader for the cache manager (and it's associated caches) to use when creating application objects (e.g. cache values,
      * event listeners, etc). The default classloading behavior is to prefer Thread.currentThread().getContextClassLoader() and fallback
-     * to the classloader that loaded ehcache itself. 
-     * 
+     * to the classloader that loaded ehcache itself.
+     *
      * @param loader the classloader to use
      */
     public void setClassLoader(ClassLoader loader) {

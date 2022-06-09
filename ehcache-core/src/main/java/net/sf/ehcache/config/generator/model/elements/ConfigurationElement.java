@@ -1,22 +1,20 @@
 /**
- *  Copyright Terracotta, Inc.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.config.generator.model.elements;
-
-import java.util.List;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
@@ -29,6 +27,8 @@ import net.sf.ehcache.config.SizeOfPolicyConfiguration;
 import net.sf.ehcache.config.TerracottaClientConfiguration;
 import net.sf.ehcache.config.generator.model.SimpleNodeAttribute;
 import net.sf.ehcache.config.generator.model.SimpleNodeElement;
+
+import java.util.List;
 
 /**
  * Element representing the {@link Configuration}. This element does not have a parent and is always null.
@@ -43,8 +43,6 @@ public class ConfigurationElement extends SimpleNodeElement {
 
     /**
      * Constructor accepting the {@link Configuration}. This element does not have a parent and is always null.
-     *
-     * @param configuration
      */
     public ConfigurationElement(Configuration configuration) {
         super(null, "ehcache");
@@ -55,8 +53,6 @@ public class ConfigurationElement extends SimpleNodeElement {
 
     /**
      * Constructor accepting the {@link CacheManager}. This element does not have a parent and is always null.
-     *
-     * @param cacheManager
      */
     public ConfigurationElement(CacheManager cacheManager) {
         super(null, "ehcache");
@@ -149,7 +145,7 @@ public class ConfigurationElement extends SimpleNodeElement {
     }
 
     private void testAddTransactionManagerLookupElement() {
-        FactoryConfiguration transactionManagerLookupConfiguration = configuration.getTransactionManagerLookupConfiguration();
+        FactoryConfiguration<?> transactionManagerLookupConfiguration = configuration.getTransactionManagerLookupConfiguration();
         if (transactionManagerLookupConfiguration != null
                 && !transactionManagerLookupConfiguration.equals(Configuration.DEFAULT_TRANSACTION_MANAGER_LOOKUP_CONFIG)) {
             addChildElement(new FactoryConfigurationElement(this, "transactionManagerLookup", transactionManagerLookupConfiguration));
@@ -164,7 +160,7 @@ public class ConfigurationElement extends SimpleNodeElement {
     }
 
     private void testAddCacheManagerEventListenerFactoryElement() {
-        FactoryConfiguration cacheManagerEventListenerFactoryConfiguration = configuration
+        FactoryConfiguration<?> cacheManagerEventListenerFactoryConfiguration = configuration
                 .getCacheManagerEventListenerFactoryConfiguration();
         if (cacheManagerEventListenerFactoryConfiguration != null) {
             addChildElement(new FactoryConfigurationElement(this, "cacheManagerEventListenerFactory",
@@ -173,7 +169,7 @@ public class ConfigurationElement extends SimpleNodeElement {
     }
 
     private void testAddCacheManagerPeerProviderFactoryElement() {
-        List<FactoryConfiguration> cacheManagerPeerProviderFactoryConfiguration = configuration
+        List<FactoryConfiguration<?>> cacheManagerPeerProviderFactoryConfiguration = configuration
                 .getCacheManagerPeerProviderFactoryConfiguration();
         if (cacheManagerPeerProviderFactoryConfiguration != null) {
             addAllFactoryConfigsAsChildElements(this, "cacheManagerPeerProviderFactory", cacheManagerPeerProviderFactoryConfiguration);
@@ -181,7 +177,7 @@ public class ConfigurationElement extends SimpleNodeElement {
     }
 
     private void testAddCacheManagerPeerListenerFactoryElement() {
-        List<FactoryConfiguration> cacheManagerPeerListenerFactoryConfigurations = configuration
+        List<FactoryConfiguration<?>> cacheManagerPeerListenerFactoryConfigurations = configuration
                 .getCacheManagerPeerListenerFactoryConfigurations();
         if (cacheManagerPeerListenerFactoryConfigurations != null && !cacheManagerPeerListenerFactoryConfigurations.isEmpty()) {
             addAllFactoryConfigsAsChildElements(this, "cacheManagerPeerListenerFactory", cacheManagerPeerListenerFactoryConfigurations);

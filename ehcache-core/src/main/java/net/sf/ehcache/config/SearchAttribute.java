@@ -1,23 +1,20 @@
 /**
- *  Copyright Terracotta, Inc.
+ * Copyright Terracotta, Inc.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * <a href="http://www.apache.org/licenses/LICENSE-2.0">http://www.apache.org/licenses/LICENSE-2.0</a>
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package net.sf.ehcache.config;
-
-import java.util.Properties;
-import java.util.Set;
 
 import net.sf.ehcache.config.generator.model.NodeElement;
 import net.sf.ehcache.config.generator.model.SimpleNodeAttribute;
@@ -29,6 +26,9 @@ import net.sf.ehcache.search.attribute.ReflectionAttributeExtractor;
 import net.sf.ehcache.util.ClassLoaderUtil;
 import net.sf.ehcache.util.PropertyUtil;
 
+import java.util.Properties;
+import java.util.Set;
+
 /**
  * A cache search attribute. Search attributes must have a name and optionally an expression or class set (if neither is set then this
  * implies java bean style)
@@ -38,19 +38,17 @@ import net.sf.ehcache.util.PropertyUtil;
 public class SearchAttribute {
 
     private static final Class<?> UNRESOLVED = UnresolvedType.class;
-    
+
     private String name;
     private String className;
     private String expression;
     private String properties;
     private String propertySeparator;
     private String typeName;
-    private Class<?> type; 
+    private Class<?> type;
 
     /**
      * Set the attribute name
-     *
-     * @param name
      */
     public void setName(String name) {
         this.name = name;
@@ -58,8 +56,6 @@ public class SearchAttribute {
 
     /**
      * Set the extractor class for this attribute. This class must be available at runtime and must implement {@link AttributeExtractor}
-     *
-     * @param className
      */
     public void setClass(String className) {
         if (expression != null) {
@@ -67,11 +63,9 @@ public class SearchAttribute {
         }
         this.className = className;
     }
-    
+
     /**
      * Set the attribute expression. See {@link ReflectionAttributeExtractor} for more information
-     *
-     * @param expression
      */
     public void setExpression(String expression) {
         if (className != null) {
@@ -82,22 +76,20 @@ public class SearchAttribute {
 
     /**
      * Set optional attribute type
-     * @param type
      */
     public void setType(String type) {
         this.type = UNRESOLVED;
         this.typeName = type;
     }
-    
+
     /**
      * Set optional attribute type
-     * @param type
      */
     public void setType(Class<?> type) {
         this.typeName = validateType(type);
         this.type = type;
     }
-    
+
     /**
      * Get the extractor class name
      */
@@ -125,21 +117,18 @@ public class SearchAttribute {
     public String getTypeName() {
         return typeName;
     }
-   
-    
+
     /**
      * Get actual attribute type
-     * @return
      */
     Class<?> getType(ClassLoader loader) {
         if (type == UNRESOLVED) {
             type = validateType(this.typeName, loader);
         }
-        
-        
+
         return type;
     }
-    
+
     /**
      * Construct the extractor for this attribute configuration
      */
@@ -152,8 +141,8 @@ public class SearchAttribute {
             return new ReflectionAttributeExtractor(expression);
         } else if (className != null) {
             if (properties != null) {
-                return (AttributeExtractor) ClassLoaderUtil.createNewInstance(loader, className, new Class[] {Properties.class},
-                        new Object[] {PropertyUtil.parseProperties(properties, propertySeparator)});
+                return (AttributeExtractor) ClassLoaderUtil.createNewInstance(loader, className, new Class[]{Properties.class},
+                        new Object[]{PropertyUtil.parseProperties(properties, propertySeparator)});
             } else {
                 return (AttributeExtractor) ClassLoaderUtil.createNewInstance(loader, className);
             }
@@ -164,9 +153,6 @@ public class SearchAttribute {
 
     /**
      * Set the attribute name
-     *
-     * @param name
-     * @return this
      */
     public SearchAttribute name(String name) {
         setName(name);
@@ -199,28 +185,22 @@ public class SearchAttribute {
 
     /**
      * Set optional attribute type
-     * @param type
-     * @return this
      */
     public SearchAttribute type(String type) {
         setType(type);
         return this;
     }
-    
+
     /**
      * Set optional attribute type
-     * @param type
-     * @return this
      */
     public SearchAttribute type(Class<?> type) {
         setType(type);
         return this;
     }
-    
+
     /**
      * Set the extractor properties
-     *
-     * @param props
      */
     public void setProperties(String props) {
         this.properties = props;
@@ -228,8 +208,6 @@ public class SearchAttribute {
 
     /**
      * Set the extractor properties separator
-     *
-     * @param sep
      */
     public void setPropertySeparator(String sep) {
         this.propertySeparator = sep;
@@ -237,9 +215,6 @@ public class SearchAttribute {
 
     /**
      * Set the extractor properties separator
-     *
-     * @param sep
-     * @return this
      */
     public SearchAttribute propertySeparator(String sep) {
         setPropertySeparator(sep);
@@ -248,9 +223,6 @@ public class SearchAttribute {
 
     /**
      * Set the extractor properties
-     *
-     * @param props
-     * @return this
      */
     public SearchAttribute properties(String props) {
         setProperties(props);
@@ -288,46 +260,48 @@ public class SearchAttribute {
 
     private Class<?> validateType(String attrType, ClassLoader loader) {
         Class<?> realType = null;
-        for (Class c : AttributeType.getSupportedJavaTypes()) {
-          if (attrType.equals(c.getName())) {
-            realType = c;
-            break;
-          }
-          String[] groups = c.getName().split("\\.");
-          if (attrType.equals(groups[groups.length - 1])) {
-            if (realType != null) { throw new InvalidConfigurationException("Ambiguous attribute type " + attrType); }
-            realType = c;
-          }
+        for (Class<?> c : AttributeType.getSupportedJavaTypes()) {
+            if (attrType.equals(c.getName())) {
+                realType = c;
+                break;
+            }
+            String[] groups = c.getName().split("\\.");
+            if (attrType.equals(groups[groups.length - 1])) {
+                if (realType != null) {
+                    throw new InvalidConfigurationException("Ambiguous attribute type " + attrType);
+                }
+                realType = c;
+            }
         }
 
         if (realType == null) {
-          // Attempt to load then validate that it's enum
-          try {
-            realType = loader.loadClass(attrType);
-          } catch (ClassNotFoundException e) {
-            throw new InvalidConfigurationException(String.format("Unable to load class specified as type of attribute %s: %s", 
-                    name, e.getMessage()));
-          }
-          if (!realType.isEnum()) {
-              throw new InvalidConfigurationException(String.format("Unsupported attribute type specified %s for search attribute %s", 
-                      attrType, name));
-          }
+            // Attempt to load then validate that it's enum
+            try {
+                realType = loader.loadClass(attrType);
+            } catch (ClassNotFoundException e) {
+                throw new InvalidConfigurationException(String.format("Unable to load class specified as type of attribute %s: %s",
+                        name, e.getMessage()));
+            }
+            if (!realType.isEnum()) {
+                throw new InvalidConfigurationException(String.format("Unsupported attribute type specified %s for search attribute %s",
+                        attrType, name));
+            }
         }
-        
+
         return realType;
     }
-    
+
     private String validateType(Class<?> attrType) {
         Set<Class<?>> knownTypes = AttributeType.getSupportedJavaTypes();
         String t = attrType.getName();
-        if (!knownTypes.contains(attrType) && !attrType.isEnum()) { 
+        if (!knownTypes.contains(attrType) && !attrType.isEnum()) {
             throw new InvalidConfigurationException(String.format("Unsupported attribute type specified %s for search attribute %s", t, name));
         }
         return t;
     }
-    
+
     private static class UnresolvedType {
         //
     }
-    
+
 }
